@@ -43,28 +43,31 @@ def fetch_trades(
     """
     records = []
     today = datetime.today()
+    lawd_codes = _get_lawd_cd(region)
+
+    url = "http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
 
     for i in range(months):
         target = today - timedelta(days=30 * i)
-        ym = target.strftime("%Y%m")  # 예: "202503"
-        
-        params = {
-            "serviceKey":   config.MOLIT_API_KEY,
-            "pageNo":       "1",
-            "numOfRows":    "100",
-            "LAWD_CD":      _get_lawd_cd(region),   # 법정동 코드
-            "DEAL_YMD":     ym,
-        }
+        ym = target.strftime("%Y%m")
 
-        url = "http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
-        
-        try:
-            resp = requests.get(url, params=params, timeout=10)
-            resp.raise_for_status()
-            records.extend(_parse_xml(resp.text, region))
-            print(f"[수집] {ym} {region}: {len(records)}건")
-        except requests.RequestException as e:
-            print(f"[오류] 국토부 API 요청 실패: {e}")
+        for code in lawd_codes:
+            params = {
+                "serviceKey":   config.MOLIT_API_KEY,
+                "pageNo":       "1",
+                "numOfRows":    "100",
+                "LAWD_CD":      code,
+                "DEAL_YMD":     ym,
+            }
+
+            try:
+                resp = requests.get(url, params=params, timeout=10)
+                resp.raise_for_status()
+                records.extend(_parse_xml(resp.text, region))
+            except requests.RequestException as e:
+                print(f"[오류] 국토부 API 요청 실패 ({code}): {e}")
+
+        print(f"[수집] {ym} {region}: {len(records)}건")
 
     return records
 
@@ -163,21 +166,66 @@ def get_notable_trades(records: list[TradeRecord], top_n: int = 2) -> list[Trade
     return result
 
 
-def _get_lawd_cd(region: str) -> str:
+def _get_lawd_cd(region: str) -> list[str]:
     """
-    지역구 → 법정동 코드 변환
-    실제 운영 시 전체 코드 테이블로 확장 필요
+    지역명 → 법정동 코드 리스트 변환
+    경기도 시 중 구가 있는 경우 모든 구 코드를 반환
     """
     CODE_MAP = {
-        "마포구":   "11440",
-        "강남구":   "11680",
-        "서초구":   "11650",
-        "송파구":   "11710",
-        "용산구":   "11170",
-        "성동구":   "11200",
-        "광진구":   "11215",
-        "노원구":   "11350",
-        "은평구":   "11380",
-        "서대문구": "11410",
+        # ── 서울특별시 (25구) ──
+        "강남구":   ["11680"],
+        "강동구":   ["11740"],
+        "강북구":   ["11305"],
+        "강서구":   ["11500"],
+        "관악구":   ["11620"],
+        "광진구":   ["11215"],
+        "구로구":   ["11530"],
+        "금천구":   ["11545"],
+        "노원구":   ["11350"],
+        "도봉구":   ["11320"],
+        "동대문구": ["11230"],
+        "동작구":   ["11590"],
+        "마포구":   ["11440"],
+        "서대문구": ["11410"],
+        "서초구":   ["11650"],
+        "성동구":   ["11200"],
+        "성북구":   ["11290"],
+        "송파구":   ["11710"],
+        "양천구":   ["11470"],
+        "영등포구": ["11560"],
+        "용산구":   ["11170"],
+        "은평구":   ["11380"],
+        "종로구":   ["11110"],
+        "중구":     ["11140"],
+        "중랑구":   ["11260"],
+        # ── 경기도 (28시) ──
+        "고양시":   ["41281", "41285", "41287"],  # 덕양·일산동·일산서
+        "과천시":   ["41290"],
+        "광명시":   ["41210"],
+        "광주시":   ["41610"],
+        "구리시":   ["41310"],
+        "군포시":   ["41410"],
+        "김포시":   ["41570"],
+        "남양주시": ["41360"],
+        "동두천시": ["41250"],
+        "부천시":   ["41190"],
+        "성남시":   ["41131", "41133", "41135"],  # 수정·중원·분당
+        "수원시":   ["41111", "41113", "41115", "41117"],  # 장안·권선·팔달·영통
+        "시흥시":   ["41390"],
+        "안산시":   ["41271", "41273"],  # 상록·단원
+        "안성시":   ["41550"],
+        "안양시":   ["41171", "41173"],  # 만안·동안
+        "양주시":   ["41630"],
+        "여주시":   ["41670"],
+        "오산시":   ["41370"],
+        "용인시":   ["41461", "41463", "41465"],  # 처인·기흥·수지
+        "의왕시":   ["41430"],
+        "의정부시": ["41150"],
+        "이천시":   ["41500"],
+        "파주시":   ["41480"],
+        "평택시":   ["41220"],
+        "포천시":   ["41650"],
+        "하남시":   ["41450"],
+        "화성시":   ["41590"],
     }
-    return CODE_MAP.get(region, "11440")  # 기본값: 마포구
+    return CODE_MAP.get(region, ["11440"])
