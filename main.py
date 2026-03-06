@@ -155,9 +155,9 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
             print(f"  → [{i+1}/{len(notable)}] {trade.complex_name} 임장 요소 수집 중...")
 
             # 도로명주소 API + Haversine으로 임장 요소 수집
+            city = "경기도" if "시" in region else "서울특별시"
             factors = get_location_factors(
                 complex_name=trade.complex_name,
-                city = "경기도" if "시" in region else "서울특별시"
                 address=f"{city} {region} {trade.road_name}"
             )
 
