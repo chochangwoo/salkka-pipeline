@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>살까말까 — 내집마련을 준비하는 당신을 위한 주간 브리핑</title>
+<meta name="description" content="국토부 실거래 데이터를 AI가 분석해 매주 월요일 아침 이메일로 보내드립니다. 무료 구독.">
+<meta property="og:title" content="살까말까 — 부동산 주간 브리핑">
+<meta property="og:description" content="부동산 잘 아는 친구가 매주 보내주는 내집마련 브리핑. 무료 구독.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ──────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  color: #1a1208;
+  background: #faf7f2;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+
+/* ── Layout ────────────────────────────────────── */
+.container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+.section { padding: 80px 0; }
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.25em;
+  text-transform: uppercase; color: #8a7e6e; margin-bottom: 16px;
+}
+.section-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 28px; font-weight: 700; line-height: 1.4;
+  margin-bottom: 20px;
+}
+.divider {
+  width: 40px; height: 2px; background: #1a1208; margin: 40px 0;
+}
+
+/* ── Nav ───────────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(250, 247, 242, 0.95); backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e0d8cc;
+  transition: box-shadow 0.3s;
+}
+.nav.scrolled { box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+.nav-inner {
+  max-width: 720px; margin: 0 auto; padding: 0 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  height: 56px;
+}
+.nav-logo {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 22px; font-weight: 900;
+}
+.nav-logo span { color: #c8401a; }
+.nav-cta {
+  background: #1a1208; color: #faf7f2;
+  padding: 8px 20px; font-size: 13px; font-weight: 600;
+  border: none; cursor: pointer; letter-spacing: 0.02em;
+  transition: background 0.2s;
+}
+.nav-cta:hover { background: #2a2218; }
+
+/* ── Hero ──────────────────────────────────────── */
+.hero {
+  padding: 140px 0 80px; text-align: center;
+  border-bottom: 3px double #1a1208;
+}
+.hero-date {
+  font-size: 11px; color: #8a7e6e; letter-spacing: 0.15em;
+  margin-bottom: 32px;
+}
+.hero-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 64px; font-weight: 900; line-height: 1;
+  letter-spacing: -0.02em; margin-bottom: 8px;
+}
+.hero-title span { color: #c8401a; }
+.hero-subtitle {
+  font-size: 13px; color: #8a7e6e; letter-spacing: 0.12em;
+  margin-bottom: 40px;
+}
+.hero-headline {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 22px; font-weight: 700; line-height: 1.6;
+  max-width: 480px; margin: 0 auto 16px;
+}
+.hero-desc {
+  font-size: 15px; color: #5a5040; line-height: 1.8;
+  max-width: 440px; margin: 0 auto 40px;
+}
+.hero-form {
+  display: flex; gap: 8px; max-width: 420px; margin: 0 auto 20px;
+}
+.hero-form input {
+  flex: 1; padding: 14px 18px; font-size: 15px;
+  border: 1px solid #d0c8b8; background: white;
+  font-family: 'Noto Sans KR', sans-serif;
+  outline: none; transition: border 0.2s;
+}
+.hero-form input:focus { border-color: #1a1208; }
+.hero-form input::placeholder { color: #b0a898; }
+.hero-form button {
+  padding: 14px 28px; background: #1a1208; color: #faf7f2;
+  border: none; font-size: 15px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background 0.2s;
+}
+.hero-form button:hover { background: #2a2218; }
+.hero-note {
+  font-size: 12px; color: #a09888;
+}
+.hero-note strong { color: #5a5040; }
+
+/* ── Pain ──────────────────────────────────────── */
+.pain { background: #1a1208; color: #faf7f2; }
+.pain .section-label { color: #e8a020; }
+.pain .section-title { color: #faf7f2; }
+.pain-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+  margin-top: 32px;
+}
+.pain-card {
+  padding: 28px 24px;
+  border: 1px solid #3a3020;
+  transition: border-color 0.2s;
+}
+.pain-card:hover { border-color: #e8a020; }
+.pain-emoji { font-size: 28px; margin-bottom: 16px; }
+.pain-card h3 {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 17px; font-weight: 700; margin-bottom: 12px;
+  color: #e8a020;
+}
+.pain-card p {
+  font-size: 14px; line-height: 1.8; color: #c0b0a0;
+}
+
+/* ── Solution ─────────────────────────────────── */
+.solution-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  margin-top: 32px;
+}
+.solution-card {
+  padding: 28px 24px;
+  border: 1px solid #e0d8cc;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.solution-card:hover {
+  border-color: #1a1208;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+.solution-num {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.2em;
+  color: #8a7e6e; margin-bottom: 12px;
+}
+.solution-card h3 {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 18px; font-weight: 700; margin-bottom: 10px;
+}
+.solution-card p {
+  font-size: 14px; color: #5a5040; line-height: 1.8;
+}
+
+/* ── Preview ──────────────────────────────────── */
+.preview { background: #f2ede4; }
+.preview-box {
+  background: white; border: 1px solid #e0d8cc;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+  margin-top: 32px; overflow: hidden;
+}
+.preview-header {
+  background: #1a1208; color: white; padding: 16px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.preview-header-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 20px; font-weight: 900;
+}
+.preview-header-title span { color: #e8a020; }
+.preview-vol {
+  font-size: 11px; color: #e8a020; font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.preview-body { padding: 28px 24px; }
+.preview-section {
+  padding: 20px 0;
+  border-bottom: 1px solid #e0d8cc;
+}
+.preview-section:last-child { border-bottom: none; }
+.preview-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: #8a7e6e; margin-bottom: 12px;
+}
+.preview-stat-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+}
+.preview-stat {
+  padding: 12px; border: 1px solid #e0d8cc; text-align: center;
+}
+.preview-stat-label {
+  font-size: 10px; color: #8a7e6e; letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.preview-stat-value {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 20px; font-weight: 700;
+}
+.preview-complex-name {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 16px; font-weight: 700; margin-bottom: 8px;
+}
+.preview-complex-tags {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.preview-tag {
+  font-size: 11px; padding: 2px 8px;
+  background: #f2ede4; border: 1px solid #e0d8cc; color: #5a5040;
+}
+.preview-text {
+  font-size: 13px; line-height: 1.85; color: #3d3428;
+}
+.preview-signal {
+  background: #1a1208; color: white; padding: 20px; margin-top: 12px;
+}
+.preview-signal-label {
+  font-size: 10px; color: #e8a020; font-weight: 700;
+  letter-spacing: 0.2em; margin-bottom: 8px;
+}
+.preview-signal-value {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 22px; font-weight: 900; color: #e8a020; margin-bottom: 8px;
+}
+.preview-signal-reason {
+  font-size: 13px; color: #c0b0a0; line-height: 1.7;
+}
+.preview-blur {
+  position: relative; overflow: hidden;
+}
+.preview-blur::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(transparent, white);
+}
+.preview-blur-badge {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 2; background: #c8401a; color: white;
+  padding: 8px 20px; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ── Compare ──────────────────────────────────── */
+.compare-table {
+  width: 100%; border-collapse: collapse; margin-top: 32px;
+  font-size: 14px;
+}
+.compare-table th {
+  padding: 14px 16px; text-align: left;
+  border-bottom: 2px solid #1a1208;
+  font-size: 13px; font-weight: 600;
+}
+.compare-table th:not(:first-child) { text-align: center; }
+.compare-table td {
+  padding: 12px 16px; border-bottom: 1px solid #e0d8cc;
+}
+.compare-table td:not(:first-child) { text-align: center; }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table .plan-free { background: #faf7f2; }
+.compare-table .plan-std {
+  background: #1a1208; color: #faf7f2;
+}
+.compare-table .plan-std th {
+  color: #e8a020; border-bottom-color: #3a3020;
+}
+.compare-table .plan-std td { border-bottom-color: #3a3020; }
+.compare-check { color: #2d8a4e; font-weight: 700; }
+.compare-x { color: #c0b0a0; }
+.plan-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.15em; padding: 2px 8px;
+  background: #e8a020; color: #1a1208; margin-top: 4px;
+}
+
+/* ── Difference ──────────────────────────────── */
+.diff { background: #1a1208; color: #faf7f2; }
+.diff .section-label { color: #e8a020; }
+.diff .section-title { color: #faf7f2; }
+.diff-table {
+  width: 100%; border-collapse: collapse; margin-top: 32px;
+  font-size: 14px;
+}
+.diff-table th {
+  padding: 12px 16px; text-align: left;
+  border-bottom: 1px solid #3a3020;
+  font-size: 12px; color: #8a7e6e; font-weight: 600;
+}
+.diff-table td {
+  padding: 14px 16px; border-bottom: 1px solid #3a3020;
+  vertical-align: top;
+}
+.diff-table td:first-child { color: #e8a020; font-weight: 600; width: 120px; }
+.diff-table td:nth-child(2) { color: #8a7e6e; }
+.diff-table td:nth-child(3) { color: #faf7f2; font-weight: 500; }
+
+/* ── Pricing ──────────────────────────────────── */
+.pricing-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  margin-top: 32px;
+}
+.pricing-card {
+  padding: 32px 28px; border: 1px solid #e0d8cc;
+  position: relative;
+}
+.pricing-card.featured {
+  border: 2px solid #1a1208;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+}
+.pricing-card.featured::before {
+  content: '추천';
+  position: absolute; top: -12px; right: 20px;
+  background: #c8401a; color: white;
+  padding: 4px 14px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.pricing-plan {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: #8a7e6e; margin-bottom: 8px;
+}
+.pricing-price {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 32px; font-weight: 900; margin-bottom: 4px;
+}
+.pricing-price small { font-size: 14px; font-weight: 400; color: #8a7e6e; }
+.pricing-desc {
+  font-size: 13px; color: #8a7e6e; margin-bottom: 20px;
+  padding-bottom: 20px; border-bottom: 1px solid #e0d8cc;
+}
+.pricing-features { list-style: none; }
+.pricing-features li {
+  font-size: 14px; padding: 6px 0; color: #3d3428;
+}
+.pricing-features li::before {
+  content: '✓ '; color: #2d8a4e; font-weight: 700;
+}
+.pricing-features li.disabled {
+  color: #c0b8a8;
+}
+.pricing-features li.disabled::before {
+  content: '— '; color: #c0b8a8;
+}
+.pricing-cta {
+  display: block; width: 100%; padding: 14px;
+  text-align: center; font-size: 14px; font-weight: 600;
+  margin-top: 24px; border: none; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background 0.2s;
+}
+.pricing-cta-free {
+  background: white; border: 1px solid #1a1208; color: #1a1208;
+}
+.pricing-cta-free:hover { background: #f2ede4; }
+.pricing-cta-paid {
+  background: #1a1208; color: #faf7f2;
+}
+.pricing-cta-paid:hover { background: #2a2218; }
+
+/* ── FAQ ──────────────────────────────────────── */
+.faq { background: #f2ede4; }
+.faq-list { margin-top: 32px; }
+.faq-item {
+  border-bottom: 1px solid #d8d0c4;
+  padding: 20px 0;
+}
+.faq-q {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.faq-q::after {
+  content: '+'; font-size: 20px; color: #8a7e6e;
+  transition: transform 0.2s;
+}
+.faq-item.open .faq-q::after { transform: rotate(45deg); }
+.faq-a {
+  font-size: 14px; color: #5a5040; line-height: 1.8;
+  max-height: 0; overflow: hidden; transition: max-height 0.3s, padding 0.3s;
+}
+.faq-item.open .faq-a {
+  max-height: 200px; padding-top: 12px;
+}
+
+/* ── CTA Final ────────────────────────────────── */
+.cta-final {
+  text-align: center; background: #1a1208; color: #faf7f2;
+}
+.cta-final .section-title { color: #faf7f2; }
+.cta-final-desc {
+  font-size: 16px; color: #c0b0a0; line-height: 1.8;
+  max-width: 440px; margin: 0 auto 32px;
+}
+.cta-final-form {
+  display: flex; gap: 8px; max-width: 420px; margin: 0 auto 16px;
+}
+.cta-final-form input {
+  flex: 1; padding: 14px 18px; font-size: 15px;
+  border: 1px solid #3a3020; background: #2a2218; color: #faf7f2;
+  font-family: 'Noto Sans KR', sans-serif; outline: none;
+}
+.cta-final-form input::placeholder { color: #6a6050; }
+.cta-final-form input:focus { border-color: #e8a020; }
+.cta-final-form button {
+  padding: 14px 28px; background: #e8a020; color: #1a1208;
+  border: none; font-size: 15px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: background 0.2s;
+}
+.cta-final-form button:hover { background: #f0b030; }
+.cta-final-note {
+  font-size: 12px; color: #6a6050;
+}
+
+/* ── Footer ───────────────────────────────────── */
+.footer {
+  padding: 40px 0; border-top: 3px double #e0d8cc;
+  text-align: center;
+}
+.footer-logo {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 24px; font-weight: 900; margin-bottom: 12px;
+}
+.footer-logo span { color: #c8401a; }
+.footer-links {
+  font-size: 12px; color: #8a7e6e; margin-bottom: 12px;
+}
+.footer-links a { margin: 0 8px; }
+.footer-links a:hover { color: #1a1208; }
+.footer-legal {
+  font-size: 11px; color: #b0a898; max-width: 480px;
+  margin: 0 auto; line-height: 1.7;
+}
+
+/* ── Toast ─────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: -80px; left: 50%; transform: translateX(-50%);
+  background: #1a1208; color: #faf7f2; padding: 16px 32px;
+  font-size: 14px; font-weight: 500; z-index: 200;
+  transition: bottom 0.4s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.toast.show { bottom: 32px; }
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 640px) {
+  .hero-title { font-size: 44px; }
+  .hero-headline { font-size: 19px; }
+  .hero-form { flex-direction: column; }
+  .pain-grid { grid-template-columns: 1fr; }
+  .solution-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .preview-stat-grid { grid-template-columns: 1fr; }
+  .cta-final-form { flex-direction: column; }
+  .section { padding: 60px 0; }
+  .section-title { font-size: 24px; }
+  .diff-table { font-size: 13px; }
+  .diff-table td:first-child { width: 80px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">살까<span>말까</span></div>
+    <button class="nav-cta" onclick="scrollToSubscribe()">무료 구독하기</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-date">Weekly Real Estate Brief for Home Buyers</div>
+    <h1 class="hero-title">살까<span>말까</span></h1>
+    <p class="hero-subtitle">내집마련을 준비하는 당신을 위한 주간 브리핑</p>
+    <h2 class="hero-headline">부동산 잘 아는 친구가<br>매주 월요일 아침 보내주는 브리핑</h2>
+    <p class="hero-desc">
+      국토부 실거래 데이터를 AI가 분석해서<br>
+      "그래서 이번 주 사야 해? 기다려야 해?"에 답합니다.
+    </p>
+    <form class="hero-form" id="heroForm" onsubmit="handleSubscribe(event, this)">
+      <input type="email" name="email" placeholder="이메일 주소를 입력하세요" required>
+      <button type="submit">무료 구독</button>
+    </form>
+    <p class="hero-note"><strong>무료</strong> · 매주 월요일 발송 · 언제든 구독 해지</p>
+  </div>
+</section>
+
+<!-- Pain Points -->
+<section class="pain section">
+  <div class="container">
+    <div class="section-label">Problem</div>
+    <h2 class="section-title">내집마련, 이런 고민 있으시죠?</h2>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="pain-emoji">&#128560;</div>
+        <h3>정보는 넘치는데<br>뭘 봐야 할지 모르겠다</h3>
+        <p>호갱노노, 부동산 카페, 유튜브, 뉴스 — 매일 쏟아지는 정보 속에서 진짜 중요한 걸 찾기가 너무 어렵습니다.</p>
+      </div>
+      <div class="pain-card">
+        <div class="pain-emoji">&#128200;</div>
+        <h3>숫자만 보여주고<br>의미를 안 알려준다</h3>
+        <p>실거래가 표, 전세가율, DSR — 데이터는 있는데 "그래서 이게 비싼 건지 싼 건지" 해석이 안 됩니다.</p>
+      </div>
+      <div class="pain-card">
+        <div class="pain-emoji">&#128336;</div>
+        <h3>"지금 사야 해?"<br>물어볼 데가 없다</h3>
+        <p>중개사는 사라고만 하고, 유튜버는 의견이 다 다르고. 결국 결정을 못 한 채 1~2년을 흘려보냅니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Solution -->
+<section class="solution section">
+  <div class="container">
+    <div class="section-label">Solution</div>
+    <h2 class="section-title">매주 월요일, 이메일 하나로 끝</h2>
+    <p style="font-size: 15px; color: #5a5040; margin-bottom: 8px;">
+      출근길 5분이면 이번 주 부동산 시장을 파악할 수 있습니다.
+    </p>
+    <div class="solution-grid">
+      <div class="solution-card">
+        <div class="solution-num">01</div>
+        <h3>시장 온도계</h3>
+        <p>이번 주 거래량, 평균가, 전세가율을 한눈에. 숫자가 아니라 의미를 읽어드립니다.</p>
+      </div>
+      <div class="solution-card">
+        <div class="solution-num">02</div>
+        <h3>AI 임장 서술</h3>
+        <p>주목할 단지를 GPT가 직접 가본 것처럼 서술합니다. 교통, 학군, 인프라, 가격까지.</p>
+      </div>
+      <div class="solution-card">
+        <div class="solution-num">03</div>
+        <h3>타이밍 신호</h3>
+        <p>"관망 유지 / 조심스런 매수 / 적극 매수" — 데이터 기반으로 이번 주 판단을 알려드립니다.</p>
+      </div>
+      <div class="solution-card">
+        <div class="solution-num">04</div>
+        <h3>뉴스 해설</h3>
+        <p>이번 주 꼭 알아야 할 정책·금리 뉴스 1건. "내집마련 실수요자에게 무슨 영향인지"까지.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Preview -->
+<section class="preview section">
+  <div class="container">
+    <div class="section-label">Preview</div>
+    <h2 class="section-title">실제 뉴스레터는 이렇게 생겼어요</h2>
+    <div class="preview-box">
+      <div class="preview-header">
+        <div class="preview-header-title">살까<span>말까</span></div>
+        <div class="preview-vol">Vol. 012</div>
+      </div>
+      <div class="preview-body">
+        <!-- 시장 온도계 -->
+        <div class="preview-section">
+          <div class="preview-section-label">01 · 이번 주 시장 온도계</div>
+          <div class="preview-stat-grid">
+            <div class="preview-stat">
+              <div class="preview-stat-label">주간 거래량</div>
+              <div class="preview-stat-value">47건</div>
+            </div>
+            <div class="preview-stat">
+              <div class="preview-stat-label">84㎡ 평균가</div>
+              <div class="preview-stat-value">9.2억</div>
+            </div>
+            <div class="preview-stat">
+              <div class="preview-stat-label">분석 단지</div>
+              <div class="preview-stat-value">2개</div>
+            </div>
+          </div>
+        </div>
+        <!-- 주목 단지 -->
+        <div class="preview-section">
+          <div class="preview-section-label">02 · 이번 주 주목할 단지</div>
+          <div class="preview-complex-name">마포래미안푸르지오 (84㎡)</div>
+          <div class="preview-complex-tags">
+            <span class="preview-tag">실거래가 <strong>9.3억</strong></span>
+            <span class="preview-tag">층수 <strong>12층</strong></span>
+            <span class="preview-tag">거래일 <strong>2026-03-02</strong></span>
+          </div>
+          <p class="preview-text">
+            공덕역 5호선 도보 8분, 마포초등학교까지 도보 5분 거리에 위치한 대단지입니다.
+            여의도 출근이 편리하고, 인근에 이마트 마포점이 있어 생활 인프라가 잘 갖춰져 있어요.
+            다만 연식이 있는 편이라 내부 리모델링 비용을 감안하셔야 합니다.
+            <br><br>✅ 여의도 직주근접 + 학군 안정적, 가격은 전 고점 대비 소폭 조정 구간.
+          </p>
+        </div>
+        <!-- 타이밍 -->
+        <div class="preview-section">
+          <div class="preview-section-label">03 · 실수요자 타이밍 신호</div>
+          <div class="preview-signal">
+            <div class="preview-signal-label">이번 주 살까말까 판단</div>
+            <div class="preview-signal-value">조심스런 매수 고려</div>
+            <p class="preview-signal-reason">
+              거래량이 3주 연속 증가하며 바닥 신호를 보이고 있습니다.
+              다만 금리 동결 기조가 유지되고 있어 급한 매수보다는
+              관심 단지를 좁혀가며 준비하시길 권합니다.
+            </p>
+          </div>
+        </div>
+        <!-- Blur (premium teaser) -->
+        <div class="preview-section preview-blur" style="min-height: 100px;">
+          <div class="preview-section-label" style="color: #c8401a;">PREMIUM · 급매 알림</div>
+          <p class="preview-text" style="filter: blur(4px);">
+            이번 주 마포구에서 직전 거래 대비 7.2% 하락한 급매 거래가 감지되었습니다.
+            해당 단지는 공덕역 인근으로 실수요 관심이 높은 지역입니다...
+          </p>
+          <span class="preview-blur-badge">유료 구독자 전용</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Difference -->
+<section class="diff section">
+  <div class="container">
+    <div class="section-label">Why Us</div>
+    <h2 class="section-title">살까말까는 이렇게 다릅니다</h2>
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>기존 서비스</th>
+          <th>살까말까</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>정보 접근</td>
+          <td>직접 검색해야 함</td>
+          <td>매주 이메일로 자동 도착</td>
+        </tr>
+        <tr>
+          <td>데이터 해석</td>
+          <td>숫자·그래프만 제공</td>
+          <td>AI가 맥락과 의미를 해석</td>
+        </tr>
+        <tr>
+          <td>타이밍 판단</td>
+          <td>제공하지 않음</td>
+          <td>매주 데이터 기반 신호 제공</td>
+        </tr>
+        <tr>
+          <td>임장 정보</td>
+          <td>직접 방문해야 함</td>
+          <td>교통·학군·인프라 자동 분석</td>
+        </tr>
+        <tr>
+          <td>소요 시간</td>
+          <td>30분~1시간+</td>
+          <td>5분 (이메일 읽기)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-label">Plans</div>
+    <h2 class="section-title">무료로 시작하세요</h2>
+    <p style="font-size: 15px; color: #5a5040;">
+      무료 플랜만으로도 매주 충분한 가치를 받으실 수 있습니다.
+    </p>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="pricing-card">
+        <div class="pricing-plan">Free</div>
+        <div class="pricing-price">무료</div>
+        <p class="pricing-desc">내집마련의 첫걸음</p>
+        <ul class="pricing-features">
+          <li>시장 온도계 (거래량, 평균가)</li>
+          <li>AI 임장 서술 2개 단지</li>
+          <li>타이밍 신호 (관망/매수)</li>
+          <li>이번 주 뉴스 해설 1건</li>
+          <li>편집장 총평</li>
+          <li class="disabled">급매 알림</li>
+          <li class="disabled">전세가율 위험 경보</li>
+          <li class="disabled">단지 비교 리포트</li>
+        </ul>
+        <button class="pricing-cta pricing-cta-free" onclick="scrollToSubscribe()">무료 구독하기</button>
+      </div>
+      <!-- Standard -->
+      <div class="pricing-card featured">
+        <div class="pricing-plan">Standard</div>
+        <div class="pricing-price">9,900원 <small>/월</small></div>
+        <p class="pricing-desc">결정을 도와주는 브리핑</p>
+        <ul class="pricing-features">
+          <li>Free 전체 포함</li>
+          <li>급매 알림 (최대 3건 + GPT 해설)</li>
+          <li>전세가율 위험 경보 (최대 2건)</li>
+          <li>단지 비교 리포트 (월 1회)</li>
+          <li>구독자 Q&A (매주 2건)</li>
+        </ul>
+        <button class="pricing-cta pricing-cta-paid" onclick="scrollToSubscribe()">무료로 시작하기</button>
+        <p style="font-size: 11px; color: #8a7e6e; text-align: center; margin-top: 8px;">4주 무료 체험 후 결제</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq section">
+  <div class="container">
+    <div class="section-label">FAQ</div>
+    <h2 class="section-title">자주 묻는 질문</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">어떤 데이터를 사용하나요?</div>
+        <div class="faq-a">국토교통부 아파트 매매 실거래가 공식 API를 사용합니다. 공공데이터포털에서 제공하는 가장 정확한 실거래 데이터이며, 매주 최신 거래 내역을 자동으로 수집합니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">AI 분석을 어떻게 신뢰할 수 있나요?</div>
+        <div class="faq-a">GPT-4o를 사용해 실거래 데이터와 교통·학군·인프라 정보를 종합 분석합니다. "확실하지 않은 것은 솔직하게 표현한다"는 원칙을 지키며, 투자 권유가 아닌 정보 제공을 목적으로 합니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">현재 어떤 지역을 지원하나요?</div>
+        <div class="faq-a">현재 마포구를 중심으로 서비스하고 있으며, 강남구·서초구·송파구·용산구·성동구·광진구·노원구·은평구·서대문구 총 서울 10개 구를 지원합니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">구독 해지는 어떻게 하나요?</div>
+        <div class="faq-a">매 이메일 하단의 "수신 거부" 링크를 클릭하면 즉시 구독이 해지됩니다. 별도 절차 없이 원클릭으로 가능합니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">발송 요일과 시간은요?</div>
+        <div class="faq-a">매주 월요일 오전 7시에 발송됩니다. 출근길에 5분이면 이번 주 부동산 시장을 파악하실 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Final -->
+<section class="cta-final section" id="subscribe">
+  <div class="container">
+    <h2 class="section-title" style="font-size: 32px;">
+      매주 월요일 아침,<br>내집마련 브리핑을 받아보세요
+    </h2>
+    <p class="cta-final-desc">
+      5분이면 이번 주 부동산 시장을 파악할 수 있습니다.<br>
+      무료로 시작하세요.
+    </p>
+    <form class="cta-final-form" id="ctaForm" onsubmit="handleSubscribe(event, this)">
+      <input type="email" name="email" placeholder="이메일 주소를 입력하세요" required>
+      <button type="submit">무료 구독</button>
+    </form>
+    <p class="cta-final-note">스팸 없음 · 언제든 구독 해지 · 매주 월요일 발송</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-logo">살까<span>말까</span></div>
+    <div class="footer-links">
+      <a href="#pricing">요금제</a>
+      <a href="#subscribe">구독하기</a>
+      <a href="mailto:letter@salkkamalka.com">문의</a>
+    </div>
+    <p class="footer-legal">
+      본 서비스는 정보 제공 목적이며 투자 권유가 아닙니다.<br>
+      매수/매도 결정은 본인의 판단으로 하시기 바랍니다.<br><br>
+      &copy; 2026 살까말까. All rights reserved.
+    </p>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Nav scroll effect
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+});
+
+// ── Scroll to subscribe
+function scrollToSubscribe() {
+  document.getElementById('subscribe').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => {
+    document.querySelector('#ctaForm input').focus();
+  }, 600);
+}
+
+// ── FAQ toggle
+function toggleFaq(el) {
+  el.parentElement.classList.toggle('open');
+}
+
+// ── Toast
+function showToast(msg, duration = 3000) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), duration);
+}
+
+// ── Subscribe handler
+async function handleSubscribe(e, form) {
+  e.preventDefault();
+  const email = form.querySelector('input[name="email"]').value.trim();
+  if (!email) return;
+
+  const btn = form.querySelector('button');
+  const originalText = btn.textContent;
+  btn.textContent = '처리 중...';
+  btn.disabled = true;
+
+  // Supabase에 직접 구독자 추가
+  const SUPABASE_URL = ''; // 여기에 Supabase URL 입력
+  const SUPABASE_KEY = ''; // 여기에 Supabase anon key 입력
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    // Supabase 미설정 시 로컬 알림만
+    showToast('구독 신청이 완료되었습니다! 🎉 매주 월요일 아침에 만나요.', 4000);
+    form.querySelector('input').value = '';
+    btn.textContent = originalText;
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/subscribers`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        email: email,
+        plan: 'free',
+        region: '마포구',
+        status: 'active',
+      }),
+    });
+
+    if (res.ok || res.status === 201) {
+      showToast('구독 완료! 매주 월요일 아침에 만나요 🎉', 4000);
+      form.querySelector('input').value = '';
+    } else if (res.status === 409) {
+      showToast('이미 구독 중인 이메일입니다.', 3000);
+    } else {
+      showToast('잠시 후 다시 시도해주세요.', 3000);
+    }
+  } catch (err) {
+    showToast('네트워크 오류. 잠시 후 다시 시도해주세요.', 3000);
+  }
+
+  btn.textContent = originalText;
+  btn.disabled = false;
+}
+</script>
+
+</body>
+</html>
