@@ -157,7 +157,8 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
             # 도로명주소 API + Haversine으로 임장 요소 수집
             factors = get_location_factors(
                 complex_name=trade.complex_name,
-                address=f"{config.TARGET_CITY} {region} {trade.road_name}"
+                city = "경기도" if "시" in region else "서울특별시"
+                address=f"{city} {region} {trade.road_name}"
             )
 
             # GPT 임장 서술 생성
