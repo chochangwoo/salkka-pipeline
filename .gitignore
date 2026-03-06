@@ -1,6 +1,11 @@
 # 환경변수 (API 키 포함)
 .env
 
+# 내부 문서 (비공개)
+BUSINESS_PLAN.md
+TECHNICAL_DOCUMENT.md
+salkka_TECH_DOC.md
+
 # 런타임 데이터
 data/
 
