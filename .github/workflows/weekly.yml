@@ -1,0 +1,61 @@
+name: 살까말까 주간 자동 발송
+
+on:
+  # 매주 월요일 오전 5시 (KST) = UTC 일요일 20:00
+  schedule:
+    - cron: "0 20 * * 0"
+
+  # 수동 실행 (GitHub Actions 탭에서 직접 트리거 가능)
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "분석 지역"
+        required: true
+        default: "마포구"
+      test_mode:
+        description: "테스트 모드 (발송 생략)"
+        type: boolean
+        default: false
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 파이프라인 실행
+        env:
+          MOLIT_API_KEY:  ${{ secrets.MOLIT_API_KEY }}
+          KAKAO_API_KEY:  ${{ secrets.KAKAO_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPABASE_URL:   ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:   ${{ secrets.SUPABASE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          FROM_EMAIL:     ${{ secrets.FROM_EMAIL }}
+        run: |
+          REGION="${{ github.event.inputs.region || '마포구' }}"
+          TEST="${{ github.event.inputs.test_mode || 'false' }}"
+          
+          if [ "$TEST" = "true" ]; then
+            python main.py --region "$REGION" --test
+          else
+            python main.py --region "$REGION"
+          fi
+
+      - name: 발송 결과 아티팩트 저장
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsletter-output
+          path: data/
+          retention-days: 30
