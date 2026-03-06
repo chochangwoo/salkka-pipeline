@@ -1,7 +1,8 @@
 """
 collector/molit.py
 국토부 실거래가 API로 아파트 매매 데이터 수집
-공식 API: https://api.data.go.kr/openapi/tn_pubr_public_aptTrade_info_api
+사용 API: 15126468 — 아파트 매매 실거래가 상세 자료
+https://www.data.go.kr/data/15126468/openapi.do
 """
 
 import requests
@@ -29,7 +30,7 @@ class TradeRecord:
 
 def fetch_trades(
     region: str = config.TARGET_REGION,
-    months: int = 1
+    months: int = 2
 ) -> list[TradeRecord]:
     """
     최근 N개월 실거래 데이터 수집
@@ -55,7 +56,7 @@ def fetch_trades(
             "DEAL_YMD":     ym,
         }
 
-        url = "http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTrade"
+        url = "http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
         
         try:
             resp = requests.get(url, params=params, timeout=10)

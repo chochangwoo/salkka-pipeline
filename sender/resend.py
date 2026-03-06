@@ -2,10 +2,54 @@
 sender/resend.py
 Resend API로 뉴스레터 이메일 발송
 무료 플랜: 월 3,000건
+
+v2: 플랜별 분리 발송 (free / standard / premium)
 """
 
 import requests
 import config
+
+
+def send_by_plan(
+    free_html: str,
+    premium_html: str,
+    subject_free: str,
+    subject_premium: str,
+    subscribers: list[dict],
+) -> dict:
+    """
+    플랜별 분리 발송
+
+    Args:
+        free_html:       무료 뉴스레터 HTML
+        premium_html:    유료 뉴스레터 HTML
+        subject_free:    무료 이메일 제목
+        subject_premium: 유료 이메일 제목
+        subscribers:     Supabase에서 가져온 구독자 리스트
+    Returns:
+        {"free": {"success": int, "failed": int},
+         "paid": {"success": int, "failed": int},
+         "total_success": int, "total_failed": int}
+    """
+    free_emails     = [s["email"] for s in subscribers if s.get("plan") == "free"]
+    standard_emails = [s["email"] for s in subscribers if s.get("plan") == "standard"]
+    premium_emails  = [s["email"] for s in subscribers if s.get("plan") == "premium"]
+
+    print(f"[발송] 무료:{len(free_emails)}명 / 스탠다드:{len(standard_emails)}명 / 프리미엄:{len(premium_emails)}명")
+
+    # 무료 → 기본 HTML
+    free_result = send_newsletter(free_html, subject_free, free_emails)
+
+    # 스탠다드/프리미엄 → 유료 HTML
+    paid_emails = standard_emails + premium_emails
+    paid_result = send_newsletter(premium_html, subject_premium, paid_emails)
+
+    return {
+        "free":          free_result,
+        "paid":          paid_result,
+        "total_success": free_result["success"] + paid_result["success"],
+        "total_failed":  free_result["failed"] + paid_result["failed"],
+    }
 
 
 def send_newsletter(
@@ -15,7 +59,7 @@ def send_newsletter(
 ) -> dict:
     """
     구독자 전체 발송
-    
+
     Args:
         html:       완성된 HTML 이메일
         subject:    이메일 제목
@@ -44,7 +88,7 @@ def send_single(
 ) -> dict:
     """
     단일 이메일 발송
-    
+
     Returns:
         {"ok": bool, "id": str, "error": str}
     """
