@@ -1,0 +1,78 @@
+# .github/workflows/daily_marketing.yml
+#
+# 매일 아침 7시(KST) 마케팅 콘텐츠 자동 생성
+# 요일별 다른 주제로 블로그/카페/블라인드/인스타 콘텐츠 생성
+
+name: Daily Marketing Content
+
+on:
+  schedule:
+    # 매일 오전 6시 KST = UTC 전날 21:00
+    - cron: "0 21 * * *"
+
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "분석 지역"
+        required: false
+        default: "마포구"
+      day:
+        description: "요일 강제 지정 (0=월~6=일, 비우면 오늘)"
+        required: false
+        default: ""
+
+jobs:
+  generate:
+    name: 일일 마케팅 콘텐츠 생성
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 파이프라인 데이터 다운로드
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: weekly.yml
+          name: newsletter-data
+          path: data/
+        continue-on-error: true
+
+      - name: 일일 콘텐츠 생성
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MOLIT_API_KEY:  ${{ secrets.MOLIT_API_KEY }}
+          JUSO_API_KEY:   ${{ secrets.JUSO_API_KEY }}
+        run: |
+          REGION="${{ github.event.inputs.region || '마포구' }}"
+          DAY="${{ github.event.inputs.day }}"
+
+          if [ -n "$DAY" ]; then
+            python marketing/daily_content.py --region "$REGION" --day "$DAY"
+          else
+            python marketing/daily_content.py --region "$REGION"
+          fi
+
+      - name: 생성 결과 확인
+        run: |
+          echo "=== 생성된 콘텐츠 ==="
+          TODAY=$(date +%Y%m%d)
+          ls -lh data/daily/$TODAY/ 2>/dev/null || ls -lh data/daily/*/ 2>/dev/null | tail -10
+          echo ""
+          echo "=== 블로그 미리보기 ==="
+          cat data/daily/$TODAY/blog.md 2>/dev/null | head -20 || echo "(없음)"
+
+      - name: 콘텐츠 아티팩트 저장
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-content-${{ github.run_number }}
+          path: data/daily/
+          retention-days: 14

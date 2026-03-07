@@ -602,10 +602,18 @@ if __name__ == "__main__":
                         choices=["collect", "analyze", "send", "all"],
                         help="실행 단계")
     parser.add_argument("--test",   action="store_true", help="테스트 모드 (발송 생략)")
+    parser.add_argument("--daily-marketing", action="store_true",
+                        help="일일 마케팅 콘텐츠만 생성 (파이프라인 생략)")
+    parser.add_argument("--day", type=int, default=None,
+                        help="마케팅 요일 강제 지정 (0=월~6=일)")
     args = parser.parse_args()
 
-    run_pipeline(
-        region    = args.region,
-        test_mode = args.test,
-        step      = args.step,
-    )
+    if args.daily_marketing:
+        from marketing.daily_content import generate_daily
+        generate_daily(region=args.region, day=args.day)
+    else:
+        run_pipeline(
+            region    = args.region,
+            test_mode = args.test,
+            step      = args.step,
+        )
