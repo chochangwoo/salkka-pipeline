@@ -69,13 +69,34 @@
   - SQL 스키마 (votes, watchlist 테이블) 참고용 추가
 - **파일**: `utils/db.py`
 
+#### [10] 1호 실발행 완료 (2026-03-07)
+- Vol.001 마포구 뉴스레터 발송 성공
+- Supabase 테이블 4개 생성 (subscribers, newsletter_logs, votes, watchlist)
+- 구독자 등록 + 이메일 수신 확인 완료
+- **파일**: `main.py` (파이프라인 end-to-end 검증)
+
+#### [11] 마케팅 자동화 파이프라인 통합 (2026-03-07)
+- **문제**: 마케팅 모듈이 독립 CLI, 데이터 포맷 불일치, `timing_result.json` 미저장
+- **해결**:
+  - `main.py` STEP 4.5에 마케팅 생성 통합 (카드뉴스 + 블로그/카페/블라인드 + SEO 아카이브)
+  - `timing_result.json`, `marketing_summary.json` 체크포인트 자동 저장
+  - `marketing.yml` 간소화 (생성은 main.py, 워크플로우는 배포+보존만)
+  - `weekly.yml`에 JUSO_API_KEY 추가, 아티팩트명 통일
+- **생성물**: 파이프라인 1회 실행 시 자동 생성
+  - `data/cards/card_vol{NNN}.html` — 인스타 카드뉴스 (3장)
+  - `data/posts/naver_blog_vol{NNN}.md` — 네이버 블로그 포스팅
+  - `data/posts/cafe_post_vol{NNN}.txt` — 부동산 카페 게시글
+  - `data/posts/blind_post_vol{NNN}.txt` — 블라인드 게시글
+  - `data/archive/vol{NNN}.html` — SEO 아카이브 웹페이지
+- **파일**: `main.py`, `.github/workflows/marketing.yml`, `.github/workflows/weekly.yml`
+
 ---
 
 ### 남은 작업 (우선순위순)
 
 | # | 작업 | 난이도 | 비고 |
 |---|------|--------|------|
-| 1 | 1호 실발행 테스트 | 중 | 파이프라인 end-to-end 실행 + 테스트 메일 발송 |
-| 2 | 결제 시스템 연동 | 상 | 토스페이먼츠/포트원 |
-| 3 | 인스타 카드 PNG 자동 변환 | 하 | Playwright 스크린샷 |
-| 4 | 비교 지역 자동 매칭 | 중 | 투표 결과 기반 또는 예산대 자동 매칭 |
+| 1 | 결제 시스템 연동 | 상 | 토스페이먼츠/포트원 |
+| 2 | 인스타 카드 PNG 자동 변환 | 하 | Playwright 스크린샷 |
+| 3 | 비교 지역 자동 매칭 | 중 | 투표 결과 기반 또는 예산대 자동 매칭 |
+| 4 | 네이버 429 근본 해결 | 중 | 쿠키/세션 관리 또는 프록시 |

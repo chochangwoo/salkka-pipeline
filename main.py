@@ -323,6 +323,18 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
             notable_complex=notable_names,
         )
 
+        # 마케팅용 체크포인트 저장
+        _save_checkpoint("timing_result", {
+            "신호": timing.get("signal", ""),
+            "근거": timing.get("reason", ""),
+            "힌트": timing.get("hint", ""),
+        })
+        _save_checkpoint("marketing_summary", {
+            "trade_count": summary.get("total_count", 0),
+            "avg_price": summary.get("avg_price_84", 0),
+            "summary_text": market_text,
+        })
+
         if step == "analyze":
             print("\n[분석 완료] 결과:")
             print(f"  시장 요약: {market_text[:80]}...")
@@ -470,6 +482,57 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
     save_html(premium_html, premium_path)
     print(f"  → 무료 리포트: {free_path}")
     print(f"  → 유료 리포트: {premium_path}")
+
+    # ── STEP 4.5: 마케팅 에셋 자동 생성 ─────────────────────
+    print("\n[STEP 4.5] 마케팅 에셋 생성 중...")
+    try:
+        mkt_summary = _load_checkpoint("marketing_summary") or {}
+        mkt_timing = _load_checkpoint("timing_result") or {}
+        mkt_trades = _load_checkpoint("notable_trades") or []
+
+        from marketing.card_generator import generate_card_html
+        from marketing.blog_post_generator import (
+            generate_naver_blog, generate_cafe_post, generate_blind_post,
+        )
+        from marketing.archive_generator import generate_archive_html
+
+        issue_date = datetime.now().strftime("%Y년 %m월 %d일")
+        issue_date_short = datetime.now().strftime("%Y.%m.%d")
+
+        # 인스타그램 카드뉴스
+        card_html = generate_card_html(
+            summary=mkt_summary, timing=mkt_timing,
+            notable_trades=mkt_trades, vol=issue_num,
+            region=region, issue_date=issue_date_short,
+        )
+        Path("data/cards").mkdir(parents=True, exist_ok=True)
+        Path(f"data/cards/card_vol{issue_num:03d}.html").write_text(card_html, encoding="utf-8")
+        print(f"  → 카드뉴스: data/cards/card_vol{issue_num:03d}.html")
+
+        # 블로그/카페/블라인드 게시글
+        Path("data/posts").mkdir(parents=True, exist_ok=True)
+        blog = generate_naver_blog(mkt_summary, mkt_timing, mkt_trades, issue_num, region, issue_date)
+        Path(f"data/posts/naver_blog_vol{issue_num:03d}.md").write_text(blog, encoding="utf-8")
+        cafe = generate_cafe_post(mkt_summary, mkt_timing, mkt_trades, issue_num, region, issue_date)
+        Path(f"data/posts/cafe_post_vol{issue_num:03d}.txt").write_text(cafe, encoding="utf-8")
+        blind = generate_blind_post(mkt_summary, mkt_timing, mkt_trades, issue_num, region, issue_date)
+        Path(f"data/posts/blind_post_vol{issue_num:03d}.txt").write_text(blind, encoding="utf-8")
+        print(f"  → 블로그/카페/블라인드 게시글 생성 완료")
+
+        # SEO 아카이브 페이지
+        archive_html = generate_archive_html(
+            summary=mkt_summary, timing=mkt_timing,
+            notable_trades=mkt_trades, vol=issue_num,
+            region=region, issue_date=issue_date,
+            news_title=news_item.get("title", ""),
+            news_summary=news_item.get("body", ""),
+            editor_comment=editor_summary,
+        )
+        Path("data/archive").mkdir(parents=True, exist_ok=True)
+        Path(f"data/archive/vol{issue_num:03d}.html").write_text(archive_html, encoding="utf-8")
+        print(f"  → SEO 아카이브: data/archive/vol{issue_num:03d}.html")
+    except Exception as e:
+        print(f"  → 마케팅 에셋 생성 실패 (비치명적): {e}")
 
     # ── STEP 5: 플랜별 분리 발송 ────────────────────────────
     if step in ("send", "all"):

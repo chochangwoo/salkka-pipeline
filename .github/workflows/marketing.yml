@@ -1,131 +1,27 @@
 # .github/workflows/marketing.yml
 #
-# 살까말까 마케팅 자동화 워크플로우
+# 살까말까 마케팅 에셋 배포 워크플로우
 #
-# 트리거:
-#   - 메인 뉴스레터 workflow (weekly.yml) 완료 직후 자동 실행
-#   - 수동 실행 지원 (workflow_dispatch)
-#
-# 수행 작업:
-#   1. 인스타그램 카드뉴스 HTML 생성  → data/cards/
-#   2. SEO 아카이브 웹페이지 생성     → data/archive/
-#   3. 블로그/카페 게시글 초안 생성   → data/posts/
-#   4. GitHub Pages 자동 배포         → salkkamalka.com/archive/
-#   5. 생성 결과를 GitHub 아티팩트로 보존 (30일)
+# 마케팅 에셋 생성은 main.py STEP 4.5에서 자동 처리됨
+# 이 워크플로우는 GitHub Pages 배포 + 에셋 보존 전용
 
-name: Marketing Automation
+name: Marketing Deploy
 
 on:
-  # 메인 뉴스레터 워크플로우 완료 후 자동 실행
   workflow_run:
-    workflows: ["Weekly Newsletter"]
+    workflows: ["살까말까 주간 자동 발송"]
     types: [completed]
 
-  # 수동 실행
   workflow_dispatch:
-    inputs:
-      region:
-        description: "분석 지역 (예: 마포구)"
-        required: false
-        default: "마포구"
-      vol:
-        description: "뉴스레터 호수 (숫자)"
-        required: false
-        default: "1"
-
-env:
-  PYTHON_VERSION: "3.11"
-  REGION: ${{ github.event.inputs.region || '마포구' }}
-  VOL:    ${{ github.event.inputs.vol    || '1' }}
 
 jobs:
-  # ──────────────────────────────────────────
-  # JOB 1: 마케팅 에셋 생성
-  # ──────────────────────────────────────────
-  generate-assets:
-    name: 마케팅 에셋 자동 생성
+  deploy-archive:
+    name: SEO 아카이브 배포
     runs-on: ubuntu-latest
-
-    # 메인 워크플로우가 성공했을 때만 실행 (workflow_run 트리거)
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
 
-    steps:
-      - name: 코드 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Python 설정
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: 의존성 설치
-        run: pip install -r requirements.txt
-
-      - name: 메인 파이프라인 아티팩트 다운로드 (데이터 파일)
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          workflow: weekly.yml
-          name: newsletter-data
-          path: data/
-        continue-on-error: true  # 수동 실행 시 아티팩트 없어도 진행
-
-      - name: 📱 인스타그램 카드뉴스 생성
-        run: |
-          python marketing/card_generator.py \
-            --summary data/trades_summary.json \
-            --timing  data/timing_result.json \
-            --trades  data/notable_trades.json \
-            --vol     ${{ env.VOL }} \
-            --region  "${{ env.REGION }}"
-
-      - name: 🌐 SEO 아카이브 페이지 생성
-        run: |
-          python marketing/archive_generator.py \
-            --summary data/trades_summary.json \
-            --timing  data/timing_result.json \
-            --trades  data/notable_trades.json \
-            --vol     ${{ env.VOL }} \
-            --region  "${{ env.REGION }}"
-
-      - name: 📝 블로그/카페 게시글 초안 생성
-        run: |
-          python marketing/blog_post_generator.py \
-            --summary data/trades_summary.json \
-            --timing  data/timing_result.json \
-            --trades  data/notable_trades.json \
-            --vol     ${{ env.VOL }} \
-            --region  "${{ env.REGION }}"
-
-      - name: 생성된 마케팅 에셋 확인
-        run: |
-          echo "=== 생성된 파일 목록 ==="
-          find data/cards data/archive data/posts -type f 2>/dev/null | sort
-          echo ""
-          echo "=== 카드뉴스 미리보기 ==="
-          ls -lh data/cards/ 2>/dev/null || echo "카드 없음"
-
-      - name: 마케팅 에셋 아티팩트 저장
-        uses: actions/upload-artifact@v4
-        with:
-          name: marketing-assets-vol${{ env.VOL }}
-          path: |
-            data/cards/
-            data/archive/
-            data/posts/
-          retention-days: 30
-
-  # ──────────────────────────────────────────
-  # JOB 2: GitHub Pages 배포 (아카이브 웹사이트)
-  # ──────────────────────────────────────────
-  deploy-archive:
-    name: 아카이브 웹사이트 배포
-    runs-on: ubuntu-latest
-    needs: generate-assets
-
-    # GitHub Pages가 설정되어 있을 때만 실행
-    # 설정 방법: Repository Settings → Pages → Source: GitHub Actions
     permissions:
       contents: write
       pages: write
@@ -134,43 +30,38 @@ jobs:
     steps:
       - name: 코드 체크아웃
         uses: actions/checkout@v4
+
+      - name: 파이프라인 아티팩트 다운로드
+        uses: dawidd6/action-download-artifact@v3
         with:
-          ref: gh-pages
-          fetch-depth: 0
+          workflow: weekly.yml
+          name: newsletter-data
+          path: data/
         continue-on-error: true
 
-      - name: 메인 브랜치 체크아웃 (gh-pages 없을 시)
-        uses: actions/checkout@v4
-
-      - name: 에셋 다운로드
-        uses: actions/download-artifact@v4
-        with:
-          name: marketing-assets-vol${{ env.VOL }}
-          path: downloaded/
-
-      - name: gh-pages 브랜치 준비
+      - name: 마케팅 에셋 확인
         run: |
-          # archive 디렉토리가 없으면 생성
+          echo "=== 생성된 마케팅 에셋 ==="
+          ls -lh data/cards/ 2>/dev/null || echo "카드뉴스 없음"
+          ls -lh data/posts/ 2>/dev/null || echo "게시글 없음"
+          ls -lh data/archive/ 2>/dev/null || echo "아카이브 없음"
+
+      - name: gh-pages 배포 준비
+        run: |
           mkdir -p docs/archive
-
-          # 생성된 아카이브 HTML 복사
-          cp -f downloaded/archive/*.html docs/archive/ 2>/dev/null || true
-
-          # index.html이 없으면 기본 리다이렉트 페이지 생성
+          cp -f data/archive/*.html docs/archive/ 2>/dev/null || true
           if [ ! -f docs/index.html ]; then
-            cat > docs/index.html << 'EOF'
+            cat > docs/index.html << 'EOHTML'
           <!DOCTYPE html>
           <html lang="ko">
           <head>
             <meta charset="UTF-8">
             <meta http-equiv="refresh" content="0; url=https://salkkamalka.com">
-            <title>살까말까 | 내집마련을 위한 주간 부동산 브리핑</title>
+            <title>살까말까</title>
           </head>
-          <body>
-            <p><a href="https://salkkamalka.com">살까말까로 이동합니다...</a></p>
-          </body>
+          <body><a href="https://salkkamalka.com">살까말까로 이동</a></body>
           </html>
-          EOF
+          EOHTML
           fi
 
       - name: GitHub Pages 배포
@@ -178,38 +69,16 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
-          keep_files: true  # 기존 아카이브 유지
-        continue-on-error: true  # Pages 미설정 시 조용히 실패
+          keep_files: true
+        continue-on-error: true
 
-  # ──────────────────────────────────────────
-  # JOB 3: 슬랙/이메일 알림 (선택 사항)
-  # ──────────────────────────────────────────
-  notify:
-    name: 마케팅 에셋 생성 완료 알림
-    runs-on: ubuntu-latest
-    needs: generate-assets
-
-    steps:
-      - name: 완료 요약 출력
-        run: |
-          echo "=========================================="
-          echo "  살까말까 마케팅 자동화 완료!"
-          echo "=========================================="
-          echo ""
-          echo "  Vol.${VOL} / ${REGION}"
-          echo ""
-          echo "  생성된 에셋:"
-          echo "  ✅ 인스타그램 카드뉴스 (3장)"
-          echo "  ✅ SEO 아카이브 웹페이지"
-          echo "  ✅ 네이버 블로그 초안"
-          echo "  ✅ 부동산 카페 게시글 초안"
-          echo "  ✅ 블라인드 게시글 초안"
-          echo ""
-          echo "  다음 수동 작업 (약 5분):"
-          echo "  1. Actions → Artifacts에서 marketing-assets 다운로드"
-          echo "  2. data/cards/card_vol${VOL}.html → 브라우저 스크린샷 → 인스타 업로드"
-          echo "  3. data/posts/naver_blog_vol${VOL}.md → 네이버 블로그 포스팅"
-          echo "  4. data/posts/cafe_post_vol${VOL}.txt → 부동산 카페 게시"
-          echo "  (블라인드는 선택)"
-          echo ""
-          echo "=========================================="
+      - name: 마케팅 에셋 보존
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketing-assets
+          path: |
+            data/cards/
+            data/archive/
+            data/posts/
+          retention-days: 30
+        continue-on-error: true
