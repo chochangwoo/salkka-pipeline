@@ -305,6 +305,62 @@ def _parse_prices(articles: list[dict]) -> list[int]:
     return prices
 
 
+def estimate_jeonse_rate(region: str, sample_n: int = 5) -> float:
+    """
+    지역 전세가율 추정.
+    주요 단지 N개의 매매 호가 중위값 / 전세 호가 중위값으로 계산.
+    캐시 지원 (7일 TTL).
+
+    Returns:
+        전세가율 (0~100 사이 %, 실패 시 0.0)
+    """
+    cache_key = f"jeonse_rate_{region}"
+    cached = _load_cache(cache_key)
+    if cached and cached.get("rate", 0) > 0:
+        print(f"[전세가율] {region}: 캐시 히트 {cached['rate']:.1f}%")
+        return cached["rate"]
+
+    complexes = search_complexes(region, top_n=sample_n * 2)
+    if not complexes:
+        return 0.0
+
+    # 세대수 큰 순으로 샘플링 (대표성)
+    sorted_complexes = sorted(
+        complexes,
+        key=lambda c: int(c.get("totalHouseholdCount", 0) or 0),
+        reverse=True,
+    )
+
+    rates = []
+    for c in sorted_complexes[:sample_n]:
+        cno = c.get("complexNo", "")
+        if not cno:
+            continue
+
+        sale_articles = get_complex_articles(cno, "A1")
+        jeonse_articles = get_complex_articles(cno, "B1")
+
+        sale_prices = _parse_prices(sale_articles)
+        jeonse_prices = _parse_prices(jeonse_articles)
+
+        if sale_prices and jeonse_prices:
+            sale_median = sorted(sale_prices)[len(sale_prices) // 2]
+            jeonse_median = sorted(jeonse_prices)[len(jeonse_prices) // 2]
+            if sale_median > 0:
+                rate = (jeonse_median / sale_median) * 100
+                if 30 <= rate <= 95:  # 이상치 제거
+                    rates.append(rate)
+                    print(f"  → {c.get('complexName', '')}: 전세가율 {rate:.1f}%")
+
+    if not rates:
+        return 0.0
+
+    avg_rate = sum(rates) / len(rates)
+    _save_cache(cache_key, {"rate": round(avg_rate, 1), "sample_count": len(rates)})
+    print(f"[전세가율] {region}: {avg_rate:.1f}% (샘플 {len(rates)}개)")
+    return round(avg_rate, 1)
+
+
 def complex_info_to_text(info: ComplexInfo) -> str:
     """ComplexInfo → 뉴스레터용 텍스트 요약"""
     lines = []

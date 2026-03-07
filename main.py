@@ -31,7 +31,7 @@ from premium.analyzer import (
     analyze_comparison, answer_subscriber_question
 )
 from premium.builder  import build_premium_newsletter
-from collector.naver_land import enrich_complex, complex_info_to_text
+from collector.naver_land import enrich_complex, complex_info_to_text, estimate_jeonse_rate
 from collector.supply     import get_supply_forecast, supply_to_newsletter_text
 from content.generator    import (
     generate_drop_ranking, generate_rise_ranking,
@@ -40,6 +40,7 @@ from content.generator    import (
 from content.builder      import (
     build_content_sections_html, build_complex_info_html, build_supply_section_html,
 )
+from collector.news   import get_weekly_news
 from sender.resend    import send_by_plan
 from utils.db         import (
     get_active_subscribers, get_latest_issue_num, log_newsletter
@@ -185,6 +186,7 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
     # ── STEP 1.5: 네이버 + 공급 데이터 수집 ───────────────────
     naver_infos = {}
     supply_forecast = None
+    jeonse_rate_estimated = 62.0  # 기본값, STEP 1.5에서 갱신
 
     if step in ("collect", "analyze", "all"):
         print("\n[STEP 1.5] 네이버 부동산 + 공급 데이터 수집 중...")
@@ -200,6 +202,15 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         supply_forecast = get_supply_forecast(region)
         print(f"  → 공급 전망: {supply_forecast.total_supply_3y:,}세대 (리스크: {supply_forecast.risk_level})")
 
+        # 전세가율 추정
+        print(f"  → [전세가율] {region} 전세가율 추정 중...")
+        jeonse_rate_estimated = estimate_jeonse_rate(region, sample_n=5)
+        if jeonse_rate_estimated <= 0:
+            jeonse_rate_estimated = 62.0  # 추정 실패 시 시장 평균 사용
+            print(f"  → 전세가율 추정 실패, 기본값 {jeonse_rate_estimated}% 사용")
+        else:
+            print(f"  → 전세가율: {jeonse_rate_estimated}%")
+
     # ── STEP 2: 공통 AI 분석 ────────────────────────────────
     if step in ("analyze", "all"):
         print("\n[STEP 2] 공통 AI 분석 중...")
@@ -212,7 +223,7 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         market_text = generate_market_summary(
             summary=summary,
             region=region,
-            jeonse_rate=62.0,  # TODO: 실제 API 연동
+            jeonse_rate=jeonse_rate_estimated,
         )
         print(f"  → 시장 요약 생성 완료")
 
@@ -264,7 +275,7 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
                 # 메인 지역은 이미 수집된 데이터 사용
                 r_data["avg_84"] = summary.get("avg_price_84", 0)
                 r_data["trade_count"] = summary.get("total_count", 0)
-                r_data["jeonse_rate"] = 62.0  # TODO: 실제 전세가율 API 연동
+                r_data["jeonse_rate"] = jeonse_rate_estimated
             else:
                 # 비교 지역 실거래 데이터 수집
                 print(f"  → [비교] {cr['region']} 실거래 수집 중...")
@@ -273,7 +284,8 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
                     cr_summary = get_weekly_summary(cr_trades)
                     r_data["avg_84"] = cr_summary.get("avg_price_84", 0)
                     r_data["trade_count"] = cr_summary.get("total_count", 0)
-                    r_data["jeonse_rate"] = 60.0  # TODO: 실제 전세가율 API 연동
+                    cr_jeonse = estimate_jeonse_rate(cr["region"], sample_n=3)
+                    r_data["jeonse_rate"] = cr_jeonse if cr_jeonse > 0 else jeonse_rate_estimated
                     print(f"    → {cr['region']}: {r_data['trade_count']}건, 84㎡ 평균 {r_data['avg_84']/10000:.1f}억")
                 else:
                     r_data["avg_84"] = 0
@@ -298,7 +310,7 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         timing = analyze_timing(
             summary=summary,
             region=region,
-            jeonse_rate=62.0,
+            jeonse_rate=jeonse_rate_estimated,
         )
         print(f"  → 타이밍 신호: {timing.get('signal', '')}")
 
@@ -325,6 +337,16 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         editor_summary = ""
         comparison_regions = []
         comparison_analysis = None
+
+    # ── STEP 2.5: 뉴스 자동 수집 ─────────────────────────────
+    print("\n[STEP 2.5] 부동산 뉴스 자동 수집 중...")
+    auto_news = get_weekly_news(region=region)
+    if auto_news and auto_news.get("title"):
+        news_item = auto_news
+        print(f"  → 뉴스 자동 수집: {auto_news['title'][:40]}...")
+    else:
+        news_item = THIS_WEEK_NEWS
+        print(f"  → 자동 수집 실패, 수동 뉴스 사용")
 
     # ── STEP 3: 유료 전용 분석 ──────────────────────────────
     print("\n[STEP 3] 유료 전용 분석 중...")
@@ -417,7 +439,7 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         complexes           = complex_results,
         timing              = timing,
         indicators          = THIS_WEEK_INDICATORS,
-        news_item           = THIS_WEEK_NEWS,
+        news_item           = news_item,
         editor_summary      = editor_summary,
         budget_label        = budget_label,
         comparison_regions  = comparison_regions if comparison_regions else None,

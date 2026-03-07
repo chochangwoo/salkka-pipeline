@@ -97,6 +97,129 @@ def log_newsletter(
     return resp.status_code in (200, 201)
 
 
+# ── 투표 ───────────────────────────────────────────────────────
+
+def submit_vote(email: str, region: str, budget: str, issue_num: int) -> bool:
+    """투표 제출 (중복 투표 방지는 호출측에서 has_voted 확인)"""
+    resp = requests.post(
+        _url("votes"),
+        headers=HEADERS,
+        json={
+            "email":     email,
+            "region":    region,
+            "budget":    budget,
+            "issue_num": issue_num,
+            "voted_at":  datetime.utcnow().isoformat(),
+        },
+        timeout=10,
+    )
+    return resp.status_code in (200, 201)
+
+
+def has_voted(email: str, issue_num: int) -> bool:
+    """해당 호에 이미 투표했는지 확인"""
+    resp = requests.get(
+        _url("votes"),
+        headers=HEADERS,
+        params={
+            "select":    "id",
+            "email":     f"eq.{email}",
+            "issue_num": f"eq.{issue_num}",
+            "limit":     "1",
+        },
+        timeout=10,
+    )
+    if resp.status_code == 200:
+        return len(resp.json()) > 0
+    return False
+
+
+def get_vote_results(issue_num: int) -> list[dict]:
+    """
+    해당 호의 투표 결과 집계 (region+budget 조합별 카운트).
+    Supabase REST API는 GROUP BY를 지원하지 않으므로
+    전체 투표를 가져와 Python에서 집계.
+
+    Returns:
+        [{"region": str, "budget": str, "count": int}]  (count 내림차순)
+    """
+    resp = requests.get(
+        _url("votes"),
+        headers=HEADERS,
+        params={
+            "select":    "region,budget",
+            "issue_num": f"eq.{issue_num}",
+        },
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        return []
+
+    votes = resp.json()
+    counts: dict[tuple, int] = {}
+    for v in votes:
+        key = (v["region"], v["budget"])
+        counts[key] = counts.get(key, 0) + 1
+
+    results = [
+        {"region": k[0], "budget": k[1], "count": c}
+        for k, c in counts.items()
+    ]
+    results.sort(key=lambda x: x["count"], reverse=True)
+    return results
+
+
+# ── 관심 단지 (watchlist) ─────────────────────────────────────
+
+def add_to_watchlist(email: str, complex_name: str, region: str = "") -> bool:
+    """관심 단지 등록"""
+    resp = requests.post(
+        _url("watchlist"),
+        headers=HEADERS,
+        json={
+            "email":        email,
+            "complex_name": complex_name,
+            "region":       region,
+            "created_at":   datetime.utcnow().isoformat(),
+        },
+        timeout=10,
+    )
+    return resp.status_code in (200, 201)
+
+
+def get_watchlist(email: str) -> list[dict]:
+    """사용자의 관심 단지 목록 조회"""
+    resp = requests.get(
+        _url("watchlist"),
+        headers=HEADERS,
+        params={
+            "select": "complex_name,region,created_at",
+            "email":  f"eq.{email}",
+            "order":  "created_at.desc",
+        },
+        timeout=10,
+    )
+    if resp.status_code == 200:
+        return resp.json()
+    return []
+
+
+def remove_from_watchlist(email: str, complex_name: str) -> bool:
+    """관심 단지 삭제"""
+    resp = requests.delete(
+        _url("watchlist"),
+        headers=HEADERS,
+        params={
+            "email":        f"eq.{email}",
+            "complex_name": f"eq.{complex_name}",
+        },
+        timeout=10,
+    )
+    return resp.status_code in (200, 204)
+
+
+# ── 발송 이력 (newsletter_logs) ───────────────────────────────
+
 def get_latest_issue_num() -> int:
     """가장 최근 발행 번호 조회"""
     resp = requests.get(
@@ -137,5 +260,25 @@ CREATE TABLE newsletter_logs (
     recipient_count  INTEGER,
     success_count    INTEGER,
     sent_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 투표 테이블 (v3.0)
+CREATE TABLE votes (
+    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email       TEXT,
+    region      TEXT NOT NULL,
+    budget      TEXT NOT NULL,
+    voted_at    TIMESTAMPTZ DEFAULT NOW(),
+    issue_num   INTEGER
+);
+CREATE INDEX idx_votes_issue ON votes(issue_num);
+
+-- 관심 단지 테이블 (v3.0)
+CREATE TABLE watchlist (
+    id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email         TEXT NOT NULL,
+    complex_name  TEXT NOT NULL,
+    region        TEXT,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 """
