@@ -1,0 +1,266 @@
+"""
+collector/naver_land.py
+네이버 부동산 데이터 수집
+- 단지 검색 / 상세 정보 / 매물 현황 / 시세
+"""
+
+import requests
+import time
+from dataclasses import dataclass
+
+HEADERS = {
+    "Accept": "application/json, text/plain, */*",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://new.land.naver.com/",
+}
+
+BASE = "https://new.land.naver.com/api"
+DELAY = 1.5  # Rate limit 방지 (네이버 429 대응)
+
+
+@dataclass
+class ComplexInfo:
+    """네이버 부동산 단지 상세"""
+    complex_no: str = ""
+    complex_name: str = ""
+    total_households: int = 0        # 총 세대수
+    total_dong: int = 0              # 총 동수
+    max_floor: int = 0               # 최고 층수
+    build_year: int = 0              # 준공연도
+    construction_company: str = ""   # 건설사
+    parking_per_household: float = 0 # 세대당 주차
+    heating: str = ""                # 난방 방식
+    floor_area_ratio: float = 0      # 용적률
+    building_coverage: float = 0     # 건폐율
+    # 매물 현황
+    sale_count: int = 0              # 매매 매물 수
+    jeonse_count: int = 0            # 전세 매물 수
+    min_sale_price: int = 0          # 최저 호가 (만원)
+    max_sale_price: int = 0          # 최고 호가 (만원)
+    min_jeonse_price: int = 0        # 전세 최저 (만원)
+    max_jeonse_price: int = 0        # 전세 최고 (만원)
+
+
+# ── 법정동 코드 → 네이버 cortarNo ─────────────────────────────
+
+def _to_cortar(lawd_5: str) -> str:
+    """5자리 법정동 코드를 10자리 네이버 cortarNo로 변환"""
+    return lawd_5 + "00000"
+
+
+# ── 단지 검색 ──────────────────────────────────────────────────
+
+def search_complexes(region: str, top_n: int = 30) -> list[dict]:
+    """
+    지역 내 아파트 단지 목록 검색
+
+    Returns:
+        [{"complexNo": str, "complexName": str, "totalHouseholdCount": int, ...}]
+    """
+    from collector.molit import _get_lawd_cd
+    codes = _get_lawd_cd(region)
+
+    results = []
+    for code in codes:
+        cortar = _to_cortar(code)
+        try:
+            resp = requests.get(
+                f"{BASE}/regions/complexes",
+                params={
+                    "cortarNo": cortar,
+                    "realEstateType": "APT",
+                    "order": "",
+                },
+                headers=HEADERS,
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("complexList", [])
+                results.extend(items)
+                print(f"[네이버] {region} 단지 검색: {len(items)}개")
+            else:
+                print(f"[네이버] 단지 검색 실패: HTTP {resp.status_code}")
+            time.sleep(DELAY)
+        except Exception as e:
+            print(f"[네이버] 단지 검색 오류 ({region}): {e}")
+
+    return results[:top_n]
+
+
+# ── 단지 상세 ──────────────────────────────────────────────────
+
+def get_complex_detail(complex_no: str) -> dict:
+    """네이버 단지 상세 정보 조회"""
+    try:
+        resp = requests.get(
+            f"{BASE}/complexes/{complex_no}",
+            params={"sameAddressGroup": "false"},
+            headers=HEADERS,
+            timeout=10,
+        )
+        time.sleep(DELAY)
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception as e:
+        print(f"[네이버] 상세 조회 실패 ({complex_no}): {e}")
+    return {}
+
+
+def get_complex_articles(complex_no: str, trade_type: str = "A1") -> list[dict]:
+    """
+    단지 매물 목록 조회
+    trade_type: A1=매매, B1=전세, B2=월세
+    """
+    try:
+        resp = requests.get(
+            f"{BASE}/articles/complex/{complex_no}",
+            params={
+                "realEstateType": "APT",
+                "tradeType": trade_type,
+                "page": "1",
+                "sameAddressGroup": "true",
+            },
+            headers=HEADERS,
+            timeout=10,
+        )
+        time.sleep(DELAY)
+        if resp.status_code == 200:
+            return resp.json().get("articleList", [])
+    except Exception as e:
+        print(f"[네이버] 매물 조회 실패 ({complex_no}): {e}")
+    return []
+
+
+# ── 단지명 → 네이버 단지번호 ──────────────────────────────────
+
+def find_complex_no(complex_name: str, region: str) -> str:
+    """단지명으로 네이버 단지번호 검색 (부분 일치)"""
+    complexes = search_complexes(region)
+    for c in complexes:
+        naver_name = c.get("complexName", "")
+        if complex_name in naver_name or naver_name in complex_name:
+            return c.get("complexNo", "")
+    return ""
+
+
+# ── 통합 조회: 단지 상세 + 매물 현황 ──────────────────────────
+
+def enrich_complex(complex_name: str, region: str) -> ComplexInfo:
+    """
+    단지명으로 네이버 부동산 데이터 통합 조회.
+    단지 상세 + 매매 매물 + 전세 매물을 하나의 ComplexInfo로 반환.
+    """
+    info = ComplexInfo(complex_name=complex_name)
+
+    complex_no = find_complex_no(complex_name, region)
+    if not complex_no:
+        print(f"[네이버] '{complex_name}' 단지번호 검색 실패")
+        return info
+
+    info.complex_no = complex_no
+
+    # 상세 정보
+    detail = get_complex_detail(complex_no)
+    if detail:
+        info.total_households = _int(detail.get("totalHouseholdCount"))
+        info.total_dong = _int(detail.get("totalDongCount"))
+        info.max_floor = _int(detail.get("highFloor"))
+        info.build_year = _int(detail.get("useApproveYmd", "0")[:4])
+        info.construction_company = detail.get("constructionCompanyName", "")
+        info.parking_per_household = _float(detail.get("parkingCountByHousehold"))
+        info.heating = detail.get("heatingMethodTypeCode", "")
+        info.floor_area_ratio = _float(detail.get("floorAreaRatio"))
+        info.building_coverage = _float(detail.get("buildingCoverageRatio"))
+        print(f"[네이버] {complex_name}: {info.total_households}세대, {info.construction_company}")
+
+    # 매매 매물
+    sale_articles = get_complex_articles(complex_no, "A1")
+    if sale_articles:
+        info.sale_count = len(sale_articles)
+        prices = _parse_prices(sale_articles)
+        if prices:
+            info.min_sale_price = min(prices)
+            info.max_sale_price = max(prices)
+        print(f"[네이버] {complex_name}: 매매 매물 {info.sale_count}건")
+
+    # 전세 매물
+    jeonse_articles = get_complex_articles(complex_no, "B1")
+    if jeonse_articles:
+        info.jeonse_count = len(jeonse_articles)
+        prices = _parse_prices(jeonse_articles)
+        if prices:
+            info.min_jeonse_price = min(prices)
+            info.max_jeonse_price = max(prices)
+
+    return info
+
+
+def enrich_multiple(complex_names: list[str], region: str) -> dict[str, ComplexInfo]:
+    """여러 단지를 한 번에 조회 (단지 목록 캐싱)"""
+    results = {}
+    for name in complex_names:
+        results[name] = enrich_complex(name, region)
+    return results
+
+
+# ── 유틸리티 ───────────────────────────────────────────────────
+
+def _int(val) -> int:
+    try:
+        return int(val) if val else 0
+    except (ValueError, TypeError):
+        return 0
+
+
+def _float(val) -> float:
+    try:
+        return float(val) if val else 0.0
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _parse_prices(articles: list[dict]) -> list[int]:
+    """매물 목록에서 가격 추출 (만원 단위)"""
+    prices = []
+    for a in articles:
+        raw = a.get("dealOrWarrantPrc", "")
+        if raw:
+            try:
+                cleaned = raw.replace(",", "").replace(" ", "")
+                # "6억 5,000" 같은 형태 처리
+                if "억" in cleaned:
+                    parts = cleaned.split("억")
+                    eok = int(parts[0]) * 10000
+                    rest = int(parts[1]) if parts[1] else 0
+                    prices.append(eok + rest)
+                else:
+                    prices.append(int(cleaned))
+            except (ValueError, IndexError):
+                continue
+    return prices
+
+
+def complex_info_to_text(info: ComplexInfo) -> str:
+    """ComplexInfo → 뉴스레터용 텍스트 요약"""
+    lines = []
+    if info.total_households:
+        lines.append(f"총 {info.total_households}세대 ({info.total_dong}개 동)")
+    if info.construction_company:
+        lines.append(f"건설사: {info.construction_company}")
+    if info.max_floor:
+        lines.append(f"최고 {info.max_floor}층")
+    if info.parking_per_household:
+        lines.append(f"주차 세대당 {info.parking_per_household:.1f}대")
+    if info.sale_count:
+        price_range = ""
+        if info.min_sale_price and info.max_sale_price:
+            price_range = f" ({info.min_sale_price/10000:.1f}~{info.max_sale_price/10000:.1f}억)"
+        lines.append(f"매매 매물 {info.sale_count}건{price_range}")
+    if info.jeonse_count:
+        lines.append(f"전세 매물 {info.jeonse_count}건")
+    return " | ".join(lines) if lines else ""

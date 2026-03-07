@@ -21,7 +21,8 @@ from collector.molit  import fetch_trades, get_weekly_summary, get_notable_trade
 from collector.kakao  import get_location_factors
 from analyzer.gpt     import (
     analyze_complex, analyze_timing,
-    generate_editor_summary, generate_market_summary
+    generate_editor_summary, generate_market_summary,
+    generate_region_comparison,
 )
 from reporter.builder import build_newsletter, save_html
 from premium.detector import detect_urgent_sales, detect_jeonse_risk, compare_complexes
@@ -30,11 +31,42 @@ from premium.analyzer import (
     analyze_comparison, answer_subscriber_question
 )
 from premium.builder  import build_premium_newsletter
+from collector.naver_land import enrich_complex, complex_info_to_text
+from collector.supply     import get_supply_forecast, supply_to_newsletter_text
+from content.generator    import (
+    generate_drop_ranking, generate_rise_ranking,
+    generate_urgent_sale_ranking, generate_supply_risk_ranking,
+)
+from content.builder      import (
+    build_content_sections_html, build_complex_info_html, build_supply_section_html,
+)
 from sender.resend    import send_by_plan
 from utils.db         import (
     get_active_subscribers, get_latest_issue_num, log_newsletter
 )
 
+
+# ── 예산대 × 권역 비교 설정 ────────────────────────────────────
+# 3구간 시리즈: 매주 순환 발행
+BUDGET_TIERS = [
+    {"label": "3~4억", "min": 30000, "max": 40000},
+    {"label": "5~6억", "min": 50000, "max": 60000},
+    {"label": "7억 이상", "min": 70000, "max": 999999},
+]
+
+# 비교 대상 권역 (2~3개씩)
+COMPARISON_REGIONS = {
+    "경기 남부": [
+        {"region": "안양시 동안구", "gangnam_access": "지하철 40분", "school_score": "상위권"},
+        {"region": "군포시", "gangnam_access": "지하철 50분", "school_score": "중상위"},
+        {"region": "의왕시", "gangnam_access": "지하철 45분", "school_score": "중상위"},
+    ],
+    "서울 서부": [
+        {"region": "마포구", "gangnam_access": "지하철 25분", "school_score": "상위권"},
+        {"region": "은평구", "gangnam_access": "지하철 40분", "school_score": "중상위"},
+        {"region": "서대문구", "gangnam_access": "지하철 30분", "school_score": "상위권"},
+    ],
+}
 
 # ── 수동으로 넣는 뉴스 아이템 (매주 편집자가 업데이트) ────────
 # TODO: 나중에 뉴스 크롤링으로 자동화 가능
@@ -135,9 +167,47 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         notable = [TradeRecord(**d) for d in notable_dicts]
         trades = [TradeRecord(**d) for d in trades_dicts]
 
+    # ── 예산대 결정 (주차에 따라 순환) ──────────────────────────
+    import math
+    week_num = datetime.now().isocalendar()[1]
+    budget_tier = BUDGET_TIERS[week_num % len(BUDGET_TIERS)]
+    budget_label = budget_tier["label"]
+    print(f"  → 이번 주 예산대: {budget_label}")
+
+    # 비교 대상 권역 결정
+    comparison_group = None
+    for group_name, regions in COMPARISON_REGIONS.items():
+        if any(r["region"] == region for r in regions):
+            comparison_group = regions
+            break
+    if not comparison_group:
+        comparison_group = [{"region": region, "gangnam_access": "", "school_score": ""}]
+
+    # ── STEP 1.5: 네이버 + 공급 데이터 수집 ───────────────────
+    naver_infos = {}
+    supply_forecast = None
+
+    if step in ("collect", "analyze", "all"):
+        print("\n[STEP 1.5] 네이버 부동산 + 공급 데이터 수집 중...")
+
+        # 네이버 단지 상세 (주목 단지)
+        for trade in notable:
+            print(f"  → [네이버] {trade.complex_name} 상세 조회...")
+            naver_info = enrich_complex(trade.complex_name, region)
+            naver_infos[trade.complex_name] = naver_info
+
+        # 공급 전망
+        print(f"  → [공급] {region} 공급 전망 수집...")
+        supply_forecast = get_supply_forecast(region)
+        print(f"  → 공급 전망: {supply_forecast.total_supply_3y:,}세대 (리스크: {supply_forecast.risk_level})")
+
     # ── STEP 2: 공통 AI 분석 ────────────────────────────────
     if step in ("analyze", "all"):
         print("\n[STEP 2] 공통 AI 분석 중...")
+
+        # 공급 데이터를 summary에 반영
+        if supply_forecast:
+            summary["supply_forecast"] = supply_to_newsletter_text(supply_forecast)
 
         # 2-1. 시장 온도계 요약
         market_text = generate_market_summary(
@@ -149,7 +219,7 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
 
         # 2-2. 단지별 임장 서술
         complex_results = []
-        tags = ["📌 이번 주 포커스", "💡 주목 단지"]
+        tags = ["이번 주 포커스", "주목 단지"]
 
         for i, trade in enumerate(notable):
             print(f"  → [{i+1}/{len(notable)}] {trade.complex_name} 임장 요소 수집 중...")
@@ -161,21 +231,59 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
                 address=f"{city} {region} {trade.road_name}"
             )
 
-            # GPT 임장 서술 생성
+            # 네이버 데이터로 공급 리스크 텍스트 생성
+            supply_text = supply_to_newsletter_text(supply_forecast) if supply_forecast else ""
+
+            # GPT 임장 서술 생성 (네이버 + 공급 데이터 반영)
             if factors:
                 description = analyze_complex(
                     trade=trade,
                     factors=factors,
-                    special_notes="없음"
+                    special_notes="없음",
+                    supply_risk=supply_text,
                 )
             else:
-                description = f"{trade.complex_name}에 대한 위치 정보를 수집하지 못했습니다."
+                description = ""
+
+            # 네이버 단지 정보 추가
+            naver_info = naver_infos.get(trade.complex_name)
+            naver_text = complex_info_to_text(naver_info) if naver_info else ""
 
             complex_results.append({
                 "trade":       trade,
                 "description": description,
-                "tag":         tags[i] if i < len(tags) else "📍 단지 분석",
+                "tag":         tags[i] if i < len(tags) else "단지 분석",
+                "naver_info":  naver_info,
+                "naver_text":  naver_text,
             })
+
+        # 2-2.5. 지역 비교 데이터 수집 + GPT 분석
+        comparison_regions = []
+        for cr in comparison_group:
+            r_data = dict(cr)
+            # 해당 지역 거래 데이터에서 84㎡ 평균가, 거래량 추출
+            if cr["region"] == region:
+                r_data["avg_84"] = summary.get("avg_price_84", 0)
+                r_data["trade_count"] = summary.get("total_count", 0)
+                r_data["jeonse_rate"] = 62.0  # TODO: 실제 전세가율 API 연동
+            else:
+                # 비교 지역의 데이터는 별도 수집 필요 (현재는 수동 데이터)
+                r_data.setdefault("avg_84", 0)
+                r_data.setdefault("trade_count", 0)
+                r_data.setdefault("jeonse_rate", 0)
+            comparison_regions.append(r_data)
+
+        comparison_analysis = None
+        valid_regions = [r for r in comparison_regions if r.get("avg_84", 0) > 0]
+        if len(valid_regions) >= 2:
+            print(f"  → 지역 비교 분석 중: {', '.join(r['region'] for r in valid_regions)}")
+            comparison_analysis = generate_region_comparison(
+                budget_label=budget_label,
+                regions_data=valid_regions,
+            )
+            print(f"  → 추천 지역: {comparison_analysis.get('recommended', '미정')}")
+        else:
+            comparison_regions = []
 
         # 2-3. 타이밍 신호
         timing = analyze_timing(
@@ -202,10 +310,12 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
             return
     else:
         # 분석 단계 스킵 시 더미 데이터
-        market_text    = "이번 주 시장 분석 데이터를 불러오는 중입니다."
+        market_text    = ""
         complex_results = []
         timing         = {"signal": "조심스런 매수 고려", "reason": "", "hint": ""}
-        editor_summary = "이번 주 브리핑을 준비 중입니다."
+        editor_summary = ""
+        comparison_regions = []
+        comparison_analysis = None
 
     # ── STEP 3: 유료 전용 분석 ──────────────────────────────
     print("\n[STEP 3] 유료 전용 분석 중...")
@@ -243,23 +353,75 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
             qna_items.append({"question": item["question"], "answer": answer})
     print(f"  → Q&A: {len(qna_items)}건 답변 생성")
 
+    # ── STEP 3.5: 바이럴 콘텐츠 생성 ──────────────────────────
+    print("\n[STEP 3.5] 바이럴 콘텐츠 생성 중...")
+    content_blocks = []
+
+    # 급매 TOP
+    urgent_ranking = generate_urgent_sale_ranking(trades, top_n=5)
+    if urgent_ranking.items:
+        content_blocks.append(urgent_ranking)
+        print(f"  → 급매 랭킹: {len(urgent_ranking.items)}건")
+
+    # 하락 TOP
+    drop_ranking = generate_drop_ranking(trades, top_n=5)
+    if drop_ranking.items:
+        content_blocks.append(drop_ranking)
+        print(f"  → 하락 랭킹: {len(drop_ranking.items)}건")
+
+    # 상승 TOP
+    rise_ranking = generate_rise_ranking(trades, top_n=5)
+    if rise_ranking.items:
+        content_blocks.append(rise_ranking)
+        print(f"  → 상승 랭킹: {len(rise_ranking.items)}건")
+
+    # 공급 리스크 TOP
+    if supply_forecast and supply_forecast.items:
+        supply_ranking = generate_supply_risk_ranking(supply_forecast.items, top_n=5)
+        if supply_ranking.items:
+            content_blocks.append(supply_ranking)
+            print(f"  → 공급 랭킹: {len(supply_ranking.items)}건")
+
+    # 콘텐츠 섹션 HTML 생성
+    content_html = build_content_sections_html(
+        content_blocks=content_blocks,
+        supply_forecast=supply_forecast,
+        complex_infos=naver_infos,
+    )
+
+    # 단지 카드에 네이버 정보 HTML 추가
+    for c in complex_results:
+        naver_info = c.get("naver_info")
+        if naver_info:
+            c["naver_html"] = build_complex_info_html(naver_info)
+
     # ── STEP 4: 리포트 생성 ─────────────────────────────────
     print("\n[STEP 4] HTML 리포트 생성 중...")
     issue_num = get_latest_issue_num() + 1
 
     # 4-1. 무료 HTML
     common_kwargs = dict(
-        region             = region,
-        issue_num          = issue_num,
-        summary            = summary,
-        market_summary_text= market_text,
-        complexes          = complex_results,
-        timing             = timing,
-        indicators         = THIS_WEEK_INDICATORS,
-        news_item          = THIS_WEEK_NEWS,
-        editor_summary     = editor_summary,
+        region              = region,
+        issue_num           = issue_num,
+        summary             = summary,
+        market_summary_text = market_text,
+        complexes           = complex_results,
+        timing              = timing,
+        indicators          = THIS_WEEK_INDICATORS,
+        news_item           = THIS_WEEK_NEWS,
+        editor_summary      = editor_summary,
+        budget_label        = budget_label,
+        comparison_regions  = comparison_regions if comparison_regions else None,
+        comparison_analysis = comparison_analysis,
+        urgent_sales_preview= urgent_sales if urgent_sales else None,
     )
     free_html = build_newsletter(**common_kwargs)
+
+    # 콘텐츠 섹션을 무료 HTML에 삽입 (편집장 총평 직전)
+    if content_html:
+        insert_point = free_html.find("</div><!-- end body -->")
+        if insert_point != -1:
+            free_html = free_html[:insert_point] + content_html + free_html[insert_point:]
 
     # 4-2. 유료 HTML (무료 기반 + 프리미엄 섹션)
     premium_html = build_premium_newsletter(
@@ -280,8 +442,11 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
 
     # ── STEP 5: 플랜별 분리 발송 ────────────────────────────
     if step in ("send", "all"):
-        subject_free    = f"[살까말까 Vol.{issue_num:03d}] 이번 주 {region} 실거래 브리핑"
-        subject_premium = f"[살까말까 Premium Vol.{issue_num:03d}] 이번 주 {region} 실거래 브리핑"
+        if budget_label and comparison_regions:
+            subject_free = f"[살까말까 Vol.{issue_num:03d}] {budget_label}으로 어디가 나을까?"
+        else:
+            subject_free = f"[살까말까 Vol.{issue_num:03d}] 이번 주 {region} 실거래 브리핑"
+        subject_premium = f"[살까말까 Premium Vol.{issue_num:03d}] {region} 급매 {len(urgent_sales)}건 + 맞춤 분석"
 
         if test_mode:
             print(f"\n[테스트 모드] 실제 발송 생략.")

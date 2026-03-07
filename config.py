@@ -17,7 +17,7 @@ FROM_EMAIL       = os.getenv("FROM_EMAIL", "letter@salkkamalka.com")
 # 비용 전략: 단순 정리는 mini, 핵심 서술은 4o
 GPT_MODEL_MAIN   = "gpt-4o-mini"    # 데이터 정리, 타이밍 신호
 GPT_MODEL_WRITER = "gpt-4o"         # 임장 서술, 편집장 총평, 유료 분석 (품질 중요)
-GPT_MAX_TOKENS   = 1000
+GPT_MAX_TOKENS   = 1500             # v2.3: 분석 깊이 강화로 토큰 확대
 GPT_TEMPERATURE  = 0.7              # 약간의 창의성 허용
 
 # ── 서비스 설정 ───────────────────────────────────

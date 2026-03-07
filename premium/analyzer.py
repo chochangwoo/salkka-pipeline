@@ -39,28 +39,43 @@ URGENT_SALE_SYSTEM = """
 급매로 판단되는 거래에 대해 실수요자에게 유용한 해설을 작성합니다.
 
 원칙:
-- 급락 이유 가능성을 객관적으로 분석 (시장 상황 / 개인 사정 / 하자 우려)
-- 실수요자 관심 여부를 냉정하게 판단
-- 확인해야 할 사항 2~3가지 제시
+- 반드시 가격 구조를 먼저 분석 (최근 N건 평균 대비 하락폭, 하락률)
+- 급락 원인을 구체적으로 추론 (저층/향/수리/시장상황 등 물건 자체 요인 포함)
+- "시장 상황 변화 가능성", "매도자 사정 가능성" 같은 일반적 추측 금지
+- 해당 단지의 동일 면적대 최근 거래 흐름과 비교
+- 실수요자가 실제로 확인해야 할 구체적 사항 3가지 제시
 - 과도한 추천이나 공포 유발 금지
-- 200자 내외
+- 250자 내외
 """.strip()
 
 
 def analyze_urgent_sale(sale: dict) -> str:
     """급매 거래 GPT 해설"""
     trade = sale["trade"]
+    avg_recent = sale.get("avg_recent_price", sale["prev_price"])
+    recent_count = sale.get("recent_trade_count", 2)
+
     user_prompt = f"""
 다음 급매 거래를 분석해줘.
 
+[가격 구조]
 단지명: {trade.complex_name}
-거래가: {trade.price / 10000:.1f}억원 (전용 {trade.area}㎡, {trade.floor}층)
+이번 거래: {trade.price / 10000:.1f}억원 (전용 {trade.area:.0f}㎡, {trade.floor}층)
 거래일: {trade.trade_date}
 직전 거래가: {sale['prev_price'] / 10000:.1f}억원
-하락률: {sale['drop_rate'] * 100:.1f}%
-긴급도: {sale['urgency']}
+최근 {recent_count}건 평균: {avg_recent / 10000:.1f}억원
+하락률 (직전 대비): -{sale['drop_rate'] * 100:.1f}%
+하락률 (평균 대비): -{max(0, (avg_recent - trade.price) / avg_recent * 100):.1f}%
 
-출력: 급락 가능성 분석 + 실수요자 관점 판단 + 확인 사항 2~3개
+[물건 특성]
+층수: {trade.floor}층 {'(저층)' if trade.floor <= 3 else ''}
+건축연도: {trade.build_year}년 (준공 {2026 - trade.build_year}년차)
+
+출력 형식:
+1) 가격 구조 요약 (평균 대비 얼마나 싼지 한 줄)
+2) 급락 원인 추론 (물건 자체 요인 + 시장 요인 구분)
+3) 실수요자 관점 판단
+4) 반드시 확인할 사항 3가지
 """.strip()
 
     return _call_gpt_premium(URGENT_SALE_SYSTEM, user_prompt)
@@ -138,11 +153,13 @@ QNA_SYSTEM = """
 유료 구독자의 질문에 정확하고 유용한 답변을 제공합니다.
 
 원칙:
-- 데이터 기반 답변 (가능한 경우 실거래가 언급)
-- 직접적 매수/매도 권유 금지
-- "~한 상황이라면 ~를 고려해볼 수 있습니다" 형태
-- 확인해야 할 사항 1~2가지 추가
-- 200자 내외
+- 반드시 구체적 수치 기반 답변 (실거래가, 전세가율, 공급량 등 인용)
+- "살만할 수 있습니다", "시장 상황을 고려해야 합니다" 같은 일반론 금지
+- 해당 단지/지역의 실제 데이터를 근거로 판단 근거 제시
+- 직접적 매수/매도 권유 금지, 그러나 판단에 필요한 체크리스트 제공
+- "이 조건이라면 ~를 먼저 확인하세요" 형태의 구체적 행동 제안
+- 확인해야 할 사항 2~3가지 추가
+- 300자 내외
 """.strip()
 
 
@@ -151,9 +168,13 @@ def answer_subscriber_question(question: str, context: str = "") -> str:
     user_prompt = f"""
 구독자 질문: {question}
 
-{f'참고 데이터: {context}' if context else ''}
+{f'[참고 데이터]{chr(10)}{context}' if context else ''}
 
-실수요자 관점에서 도움이 되는 답변을 작성해줘.
+답변 형식:
+1) 질문 핵심 요약 (한 줄)
+2) 데이터 기반 분석 (실거래가, 전세가율, 공급량 등 구체적 수치 인용)
+3) 실수요자 관점 판단 근거
+4) 구체적으로 확인해야 할 사항 2~3가지
 """.strip()
 
     return _call_gpt_premium(QNA_SYSTEM, user_prompt)

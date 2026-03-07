@@ -50,11 +50,17 @@ def detect_urgent_sales(
 
         if drop_rate >= drop_threshold:
             urgency = "HIGH" if drop_rate >= 0.08 else "MEDIUM"
+            # 최근 거래 평균가 계산 (가격 구조 분석용)
+            recent_prices = [t.price for t in sorted_trades[-5:]]
+            avg_recent = sum(recent_prices) // len(recent_prices)
+
             urgent_sales.append({
-                "trade":      latest,
-                "prev_price": prev.price,
-                "drop_rate":  round(drop_rate, 4),
-                "urgency":    urgency,
+                "trade":              latest,
+                "prev_price":         prev.price,
+                "drop_rate":          round(drop_rate, 4),
+                "urgency":            urgency,
+                "avg_recent_price":   avg_recent,
+                "recent_trade_count": len(recent_prices),
             })
 
     # 긴급도 → 하락률 순 정렬
@@ -145,7 +151,7 @@ def compare_complexes(
             else:
                 trend = "보합"
         else:
-            trend = "데이터 부족"
+            trend = ""
 
         results.append({
             "complex_name":  name,

@@ -39,15 +39,24 @@ def build_premium_newsletter(
             urgency_text = "고긴급" if urgency == "HIGH" else "주의"
             drop_pct = sale.get("drop_rate", 0) * 100
 
+            avg_recent = sale.get("avg_recent_price", sale.get("prev_price", 0))
+            avg_drop_pct = max(0, (avg_recent - trade.price) / avg_recent * 100) if avg_recent > 0 else 0
+            recent_count = sale.get("recent_trade_count", 2)
+
             cards_html += f"""
             <div style="border:1px solid #e0d8cc; margin-bottom:12px; padding:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <span style="font-family:'Noto Serif KR',serif; font-size:15px; font-weight:700;">{trade.complex_name} ({trade.area:.0f}㎡)</span>
                 <span style="font-size:10px; font-weight:700; color:white; background:{urgency_color}; padding:2px 8px; letter-spacing:0.1em;">{urgency_text} -{drop_pct:.1f}%</span>
               </div>
-              <div style="display:flex; gap:8px; margin-bottom:10px;">
-                <span style="font-size:11px; background:#f2ede4; padding:2px 8px; border:1px solid #e0d8cc;">거래가 <strong>{trade.price / 10000:.1f}억</strong></span>
-                <span style="font-size:11px; background:#f2ede4; padding:2px 8px; border:1px solid #e0d8cc;">직전 <strong>{sale.get('prev_price', 0) / 10000:.1f}억</strong></span>
+              <div style="padding:12px; background:#f9f6f0; border:1px solid #e0d8cc; margin-bottom:12px;">
+                <div style="font-size:10px; color:#8a7e6e; letter-spacing:0.1em; margin-bottom:8px;">가격 구조 분석</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <span style="font-size:11px; background:white; padding:3px 8px; border:1px solid #e0d8cc;">최근 {recent_count}건 평균 <strong>{avg_recent / 10000:.1f}억</strong></span>
+                  <span style="font-size:11px; background:white; padding:3px 8px; border:1px solid #e0d8cc;">직전 거래 <strong>{sale.get('prev_price', 0) / 10000:.1f}억</strong></span>
+                  <span style="font-size:11px; background:white; padding:3px 8px; border:1px solid #e0d8cc;">이번 거래 <strong style="color:#c8401a;">{trade.price / 10000:.1f}억</strong></span>
+                  <span style="font-size:11px; background:white; padding:3px 8px; border:1px solid #e0d8cc;">평균 대비 <strong style="color:#c8401a;">-{avg_drop_pct:.1f}%</strong></span>
+                </div>
               </div>
               <div style="font-size:13px; line-height:1.85; color:#3d3428;">{sale.get('analysis', '')}</div>
             </div>"""
