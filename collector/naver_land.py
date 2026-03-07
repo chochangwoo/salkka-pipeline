@@ -2,11 +2,15 @@
 collector/naver_land.py
 네이버 부동산 데이터 수집
 - 단지 검색 / 상세 정보 / 매물 현황 / 시세
+- JSON 파일 캐싱으로 429 Rate Limit 대응
 """
 
 import requests
 import time
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from datetime import datetime
 
 HEADERS = {
     "Accept": "application/json, text/plain, */*",
@@ -19,7 +23,40 @@ HEADERS = {
 }
 
 BASE = "https://new.land.naver.com/api"
-DELAY = 1.5  # Rate limit 방지 (네이버 429 대응)
+DELAY = 3.0  # Rate limit 방지 (네이버 429 대응, 1.5→3초로 상향)
+CACHE_DIR = Path("data/cache/naver")
+CACHE_TTL_DAYS = 7  # 캐시 유효 기간 (일)
+
+
+def _cache_path(key: str) -> Path:
+    """캐시 파일 경로"""
+    safe_key = key.replace(" ", "_").replace("/", "_")
+    return CACHE_DIR / f"{safe_key}.json"
+
+
+def _load_cache(key: str) -> dict | None:
+    """캐시 로드 (TTL 만료 시 None)"""
+    path = _cache_path(key)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        cached_at = datetime.fromisoformat(data.get("_cached_at", "2000-01-01"))
+        if (datetime.now() - cached_at).days > CACHE_TTL_DAYS:
+            return None
+        return data
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def _save_cache(key: str, data: dict):
+    """캐시 저장"""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    data["_cached_at"] = datetime.now().isoformat()
+    _cache_path(key).write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
 @dataclass
@@ -56,11 +93,19 @@ def _to_cortar(lawd_5: str) -> str:
 
 def search_complexes(region: str, top_n: int = 30) -> list[dict]:
     """
-    지역 내 아파트 단지 목록 검색
+    지역 내 아파트 단지 목록 검색 (캐시 지원)
 
     Returns:
         [{"complexNo": str, "complexName": str, "totalHouseholdCount": int, ...}]
     """
+    # 캐시 확인
+    cache_key = f"complexes_{region}"
+    cached = _load_cache(cache_key)
+    if cached and cached.get("items"):
+        items = cached["items"]
+        print(f"[네이버] {region} 단지 목록 캐시 히트: {len(items)}개")
+        return items[:top_n]
+
     from collector.molit import _get_lawd_cd
     codes = _get_lawd_cd(region)
 
@@ -88,6 +133,10 @@ def search_complexes(region: str, top_n: int = 30) -> list[dict]:
             time.sleep(DELAY)
         except Exception as e:
             print(f"[네이버] 단지 검색 오류 ({region}): {e}")
+
+    # 캐시 저장
+    if results:
+        _save_cache(cache_key, {"items": results})
 
     return results[:top_n]
 
@@ -152,9 +201,17 @@ def find_complex_no(complex_name: str, region: str) -> str:
 
 def enrich_complex(complex_name: str, region: str) -> ComplexInfo:
     """
-    단지명으로 네이버 부동산 데이터 통합 조회.
+    단지명으로 네이버 부동산 데이터 통합 조회 (캐시 지원).
     단지 상세 + 매매 매물 + 전세 매물을 하나의 ComplexInfo로 반환.
     """
+    # 캐시 확인
+    cache_key = f"enrich_{region}_{complex_name}"
+    cached = _load_cache(cache_key)
+    if cached and cached.get("complex_no"):
+        info = ComplexInfo(**{k: v for k, v in cached.items() if k != "_cached_at"})
+        print(f"[네이버] {complex_name}: 캐시 히트")
+        return info
+
     info = ComplexInfo(complex_name=complex_name)
 
     complex_no = find_complex_no(complex_name, region)
@@ -196,6 +253,9 @@ def enrich_complex(complex_name: str, region: str) -> ComplexInfo:
         if prices:
             info.min_jeonse_price = min(prices)
             info.max_jeonse_price = max(prices)
+
+    # 캐시 저장
+    _save_cache(cache_key, asdict(info))
 
     return info
 

@@ -168,7 +168,6 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
         trades = [TradeRecord(**d) for d in trades_dicts]
 
     # ── 예산대 결정 (주차에 따라 순환) ──────────────────────────
-    import math
     week_num = datetime.now().isocalendar()[1]
     budget_tier = BUDGET_TIERS[week_num % len(BUDGET_TIERS)]
     budget_label = budget_tier["label"]
@@ -257,20 +256,30 @@ def run_pipeline(region: str, test_mode: bool = False, step: str = "all"):
                 "naver_text":  naver_text,
             })
 
-        # 2-2.5. 지역 비교 데이터 수집 + GPT 분석
+        # 2-2.5. 비교 지역 실거래 데이터 수집 + GPT 분석
         comparison_regions = []
         for cr in comparison_group:
             r_data = dict(cr)
-            # 해당 지역 거래 데이터에서 84㎡ 평균가, 거래량 추출
             if cr["region"] == region:
+                # 메인 지역은 이미 수집된 데이터 사용
                 r_data["avg_84"] = summary.get("avg_price_84", 0)
                 r_data["trade_count"] = summary.get("total_count", 0)
                 r_data["jeonse_rate"] = 62.0  # TODO: 실제 전세가율 API 연동
             else:
-                # 비교 지역의 데이터는 별도 수집 필요 (현재는 수동 데이터)
-                r_data.setdefault("avg_84", 0)
-                r_data.setdefault("trade_count", 0)
-                r_data.setdefault("jeonse_rate", 0)
+                # 비교 지역 실거래 데이터 수집
+                print(f"  → [비교] {cr['region']} 실거래 수집 중...")
+                cr_trades = fetch_trades(region=cr["region"], months=2)
+                if cr_trades:
+                    cr_summary = get_weekly_summary(cr_trades)
+                    r_data["avg_84"] = cr_summary.get("avg_price_84", 0)
+                    r_data["trade_count"] = cr_summary.get("total_count", 0)
+                    r_data["jeonse_rate"] = 60.0  # TODO: 실제 전세가율 API 연동
+                    print(f"    → {cr['region']}: {r_data['trade_count']}건, 84㎡ 평균 {r_data['avg_84']/10000:.1f}억")
+                else:
+                    r_data["avg_84"] = 0
+                    r_data["trade_count"] = 0
+                    r_data["jeonse_rate"] = 0
+                    print(f"    → {cr['region']}: 거래 데이터 없음")
             comparison_regions.append(r_data)
 
         comparison_analysis = None

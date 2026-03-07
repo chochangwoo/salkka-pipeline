@@ -208,7 +208,7 @@ def build_newsletter(
               <div style="font-size:13px; color:#8a7e6e;">자세한 분석과 가격 구조를 확인하세요.</div>
             </div>
             <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1;">
-              <a href="#" style="display:inline-block; padding:10px 24px; background:#c8401a; color:white; text-decoration:none; font-size:13px; font-weight:700;">
+              <a href="{config.CTA_PREMIUM_URL}" style="display:inline-block; padding:10px 24px; background:#c8401a; color:white; text-decoration:none; font-size:13px; font-weight:700;">
                 이번 주 급매 {total}건 전체 보기 &rarr;
               </a>
             </div>
@@ -223,7 +223,7 @@ def build_newsletter(
         <div style="font-size:13px; color:#3d3428; margin-bottom:12px; line-height:1.7;">
           내 상황(예산, 직장, 가족)을 알려주시면<br>맞춤 분석을 보내드립니다.
         </div>
-        <a href="#" style="display:inline-block; padding:10px 28px; background:#1a1208; color:#e8a020; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.05em;">
+        <a href="{config.CTA_CUSTOM_ANALYSIS}" style="display:inline-block; padding:10px 28px; background:#1a1208; color:#e8a020; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.05em;">
           맞춤 분석 요청하기 &rarr;
         </a>
       </div>
@@ -231,7 +231,7 @@ def build_newsletter(
         <div style="font-size:13px; color:#3d3428; margin-bottom:12px; line-height:1.7;">
           관심 단지를 등록하면 급매, 가격 변동 시<br>알림을 보내드립니다.
         </div>
-        <a href="#" style="display:inline-block; padding:10px 28px; background:#1a1208; color:#e8a020; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.05em;">
+        <a href="{config.CTA_WATCHLIST_URL}" style="display:inline-block; padding:10px 28px; background:#1a1208; color:#e8a020; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.05em;">
           관심 단지 등록하기 &rarr;
         </a>
       </div>
@@ -241,15 +241,17 @@ def build_newsletter(
     vote_regions = ["안양시 동안구", "마포구", "성남시 분당구"]
     vote_budgets = ["3~4억", "5~6억", "7억 이상"]
 
+    vote_base_url = config.CTA_VOTE_URL
+
     vote_region_btns = ""
     for vr in vote_regions:
         vote_region_btns += f"""
-          <a href="#" style="display:inline-block; padding:8px 16px; margin:4px; border:1px solid #e0d8cc; background:#faf7f2; color:#3d3428; text-decoration:none; font-size:12px; font-weight:500;">{vr}</a>"""
+          <a href="{vote_base_url}" style="display:inline-block; padding:8px 16px; margin:4px; border:1px solid #e0d8cc; background:#faf7f2; color:#3d3428; text-decoration:none; font-size:12px; font-weight:500;">{vr}</a>"""
 
     vote_budget_btns = ""
     for vb in vote_budgets:
         vote_budget_btns += f"""
-          <a href="#" style="display:inline-block; padding:8px 16px; margin:4px; border:1px solid #e0d8cc; background:#faf7f2; color:#3d3428; text-decoration:none; font-size:12px; font-weight:500;">{vb}</a>"""
+          <a href="{vote_base_url}" style="display:inline-block; padding:8px 16px; margin:4px; border:1px solid #e0d8cc; background:#faf7f2; color:#3d3428; text-decoration:none; font-size:12px; font-weight:500;">{vb}</a>"""
 
     voting_html = f"""
     <div style="display:flex; align-items:center; gap:12px; margin:32px 0 20px;">

@@ -33,3 +33,10 @@ RADIUS_SCHOOL    = 1000             # 학교 검색 반경
 RADIUS_SUBWAY    = 1500             # 지하철 검색 반경
 RADIUS_MART      = 1500             # 마트 검색 반경 (v2.2)
 RADIUS_ACADEMY   = 500              # 학원 검색 반경 (v2.2)
+
+# ── CTA 링크 (v3.0) ────────────────────────────────
+# 구글 폼 또는 자체 페이지 URL (생성 후 여기에 입력)
+CTA_PREMIUM_URL     = os.getenv("CTA_PREMIUM_URL", "https://salkkamalka.com/#pricing")
+CTA_CUSTOM_ANALYSIS = os.getenv("CTA_CUSTOM_ANALYSIS", "https://salkkamalka.com/#pricing")
+CTA_WATCHLIST_URL   = os.getenv("CTA_WATCHLIST_URL", "https://salkkamalka.com/#pricing")
+CTA_VOTE_URL        = os.getenv("CTA_VOTE_URL", "https://salkkamalka.com/#pricing")
